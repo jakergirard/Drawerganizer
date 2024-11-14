@@ -1,15 +1,18 @@
-version: '3.8'
 services:
   app:
-    build:
-      context: .
-      target: deps
+    build: .
     ports:
       - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
-    command: npm run dev
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/prisma/dev.db
+    volumes:
+      - prisma-data:/app/prisma
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  prisma-data:

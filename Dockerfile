@@ -1,26 +1,25 @@
-FROM node:18-alpine AS base
+FROM node:18-alpine
 
-FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
 
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+COPY prisma ./prisma/
+
+RUN npm install
+
+RUN npx prisma generate
+
 COPY . .
+
+COPY .env.production .env
 RUN npm run build
 
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV production
+RUN echo '#!/bin/sh\n\
+npx prisma db push\n\
+npm start' > ./start.sh
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+RUN chmod +x ./start.sh
 
 EXPOSE 3000
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["./start.sh"]

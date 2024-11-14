@@ -1,14 +1,14 @@
 services:
   app:
     image: jakegirard/drawerganizer:latest
-    build: .
+    platform: linux/amd64
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=file:/app/prisma/dev.db
+      - DATABASE_URL=file:/data/dev.db
     volumes:
-      - prisma-data:/app/prisma
+      - db-data:/data
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://localhost:3000"]
       interval: 10s
@@ -16,4 +16,4 @@ services:
       retries: 3
 
 volumes:
-  prisma-data:
+  db-data:

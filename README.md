@@ -34,8 +34,8 @@ A dynamic, responsive drawer management system built with Next.js, Prisma, and s
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/drawer-grid-system.git
-cd drawer-grid-system
+git clone https://github.com/jakergirard/Drawerganizer.git
+cd Drawerganizer
 ```
 
 2. Install dependencies:

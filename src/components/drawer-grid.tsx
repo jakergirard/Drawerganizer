@@ -620,7 +620,7 @@ export const DrawerGrid = () => {
                       placeholder="Enter comma-separated keywords"
                       className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     />
-                    <p className="text-xs text-muted-foreground mb-6">Separate keywords with commas (e.g. "key1, key2, key3")</p>
+                    <p className="text-xs text-muted-foreground mb-6">Separate keywords with commas (e.g. key1, key2, key3)</p>
                   </div>
 
                   <div className={`border rounded-lg transition-all duration-200 ${

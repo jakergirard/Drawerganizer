@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, Printer } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { debounce } from 'lodash';
+import { toast } from 'sonner';
 
 const ROW_LABELS = Array.from({ length: 12 }, (_, i) => 
   String.fromCharCode(65 + i)
@@ -661,9 +662,50 @@ export const DrawerGrid = () => {
                     </div>
                   </div>
                   
-                  <Button onClick={handleSave} className="w-full">
-                    Save Changes
-                  </Button>
+                  <div className="flex gap-2 w-full">
+                    <Button onClick={handleSave} className="flex-1">
+                      Save Changes
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!name}
+                      onClick={async () => {
+                        const cupsServer = localStorage.getItem("cupsServer")
+                        const queueName = localStorage.getItem("queueName")
+                        
+                        if (!cupsServer || !queueName) {
+                          toast.error("Please configure CUPS server and queue name in settings");
+                          return;
+                        }
+
+                        try {
+                          const printResponse = await fetch('/api/print', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                              text: name || drawer.title,
+                              server: cupsServer,
+                              queue: queueName
+                            }),
+                          });
+
+                          const result = await printResponse.json();
+
+                          if (!printResponse.ok) {
+                            throw new Error(result.error || 'Print failed');
+                          }
+                          
+                          toast.success('Label printed successfully');
+                        } catch (error) {
+                          toast.error('Print failed. Please check your CUPS configuration.');
+                        }
+                      }}
+                    >
+                      <Printer className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>

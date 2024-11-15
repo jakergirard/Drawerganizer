@@ -34,6 +34,9 @@
     --destructive-foreground: 0 0% 98%;
 
     --radius: 0.5rem;
+
+    --toast-success: 142 76% 36%;
+    --toast-error: 0 84% 60%;
   }
  
   .dark {
@@ -64,6 +67,9 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
+
+    --toast-success: 142 76% 42%;
+    --toast-error: 0 84% 65%;
   }
 }
  
@@ -74,4 +80,14 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+[data-sonner-toast][data-type="success"] {
+  background-color: hsl(var(--toast-success));
+  color: white;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background-color: hsl(var(--toast-error));
+  color: white;
 }

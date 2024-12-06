@@ -4,15 +4,16 @@
 echo "Generating Prisma client..."
 npx prisma generate
 
-# Initialize the database if it doesn't exist
-if [ ! -f /app/data/database.db ]; then
-    echo "Database file not found. Initializing database..."
-    npx prisma migrate deploy
-else
-    echo "Using existing database..."
-    # Run any pending migrations
-    npx prisma migrate deploy
+# Initialize the database
+echo "Initializing fresh database..."
+if [ -f /app/data/database.db ]; then
+    echo "Removing existing database..."
+    rm /app/data/database.db
 fi
+
+# Run migrations to create fresh database
+echo "Running database migrations..."
+npx prisma migrate deploy
 
 # Start the application
 echo "Starting application..."

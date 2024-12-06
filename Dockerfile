@@ -49,8 +49,16 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
+# Create data directory with proper permissions
+RUN mkdir -p /app/data && chmod 777 /app/data
+
 EXPOSE 3000
 
 ENV PORT=3000
+ENV DATABASE_URL="file:/app/data/database.db"
 
-CMD ["node", "server.js"]
+# Initialize fresh database on container start
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]

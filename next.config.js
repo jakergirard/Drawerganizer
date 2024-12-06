@@ -2,11 +2,21 @@
 const nextConfig = {
     output: 'standalone',
     experimental: {
-        outputFileTracingRoot: undefined,
+        outputFileTracingRoot: process.cwd(),
+        serverComponentsExternalPackages: ['canvas', 'ipp']
     },
     poweredByHeader: false,
     reactStrictMode: true,
     swcMinify: true,
+    webpack: (config, { isServer }) => {
+        if (isServer) {
+            config.externals = [...config.externals, 
+                'canvas',
+                'ipp'
+            ];
+        }
+        return config;
+    }
 }
 
 module.exports = nextConfig

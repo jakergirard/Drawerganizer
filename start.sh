@@ -1,20 +1,31 @@
 #!/bin/sh
 
-# Generate Prisma client
-echo "Generating Prisma client..."
-npx prisma generate
+# Initialize database if it doesn't exist
+if [ ! -f /app/data/database.db ]; then
+    echo "Creating database..."
+    sqlite3 /app/data/database.db "
+        CREATE TABLE Drawer (
+            id TEXT PRIMARY KEY,
+            size TEXT NOT NULL,
+            title TEXT NOT NULL,
+            name TEXT,
+            positions TEXT NOT NULL,
+            isRightSection BOOLEAN NOT NULL,
+            keywords TEXT NOT NULL,
+            spacing INTEGER NOT NULL
+        );
 
-# Initialize the database
-echo "Initializing fresh database..."
-if [ -f /app/data/database.db ]; then
-    echo "Removing existing database..."
-    rm /app/data/database.db
+        CREATE TABLE PrinterConfig (
+            id INTEGER PRIMARY KEY,
+            printerName TEXT NOT NULL,
+            host TEXT NOT NULL,
+            port INTEGER NOT NULL
+        );
+
+        INSERT INTO PrinterConfig (id, printerName, host, port) 
+        VALUES (1, 'Default Printer', 'localhost', 631);
+    "
 fi
 
-# Run migrations to create fresh database
-echo "Running database migrations..."
-npx prisma migrate deploy
-
 # Start the application
-echo "Starting application..."
 exec node server.js 

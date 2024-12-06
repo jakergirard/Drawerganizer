@@ -1,64 +1,61 @@
-FROM node:18-alpine AS base
+FROM node:18-alpine AS builder
 
-# Install dependencies only when needed
-FROM base AS deps
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache python3 make g++ pkgconfig cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    pkgconfig \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev
 
-# Copy package files
+# Install all dependencies including dev dependencies
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-
-# Install build dependencies in builder stage too
-RUN apk add --no-cache python3 make g++ pkgconfig cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev cairo pango jpeg giflib librsvg
-
-COPY --from=deps /app/node_modules ./node_modules
+# Copy source and build
 COPY . .
-
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Generate Prisma client
-RUN npx prisma generate
-
-RUN npm run build
-
-# Production image, copy all the files and run next
-FROM base AS runner
-WORKDIR /app
-
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
 
-# Install runtime dependencies and build tools
-RUN apk add --no-cache python3 make g++ pkgconfig cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev cairo pango jpeg giflib librsvg
+# Production image
+FROM node:18-alpine
 
-# Copy package files and install production dependencies
-COPY package*.json ./
-RUN npm install --production --legacy-peer-deps
+WORKDIR /app
 
-# Copy necessary files from builder
-COPY --from=builder /app/public ./public
+# Install runtime dependencies
+RUN apk add --no-cache \
+    cairo \
+    pango \
+    jpeg \
+    giflib \
+    librsvg \
+    sqlite
+
+# Copy production files
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/public ./public
 
-# Create data directory with proper permissions
+# Create data directory
 RUN mkdir -p /app/data && chmod 777 /app/data
 
-EXPOSE 3000
-
+# Environment variables
+ENV NODE_ENV=production
 ENV PORT=3000
 ENV DATABASE_URL="file:/app/data/database.db"
 
-# Initialize fresh database on container start
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# Copy and set up start script
+COPY start.sh ./
+RUN chmod +x start.sh
 
-CMD ["/app/start.sh"]
+# Expose port
+EXPOSE 3000
+
+CMD ["./start.sh"]

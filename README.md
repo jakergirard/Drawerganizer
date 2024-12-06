@@ -34,12 +34,7 @@ Replace `/path/to/your/data` with the path where you want to store your database
    cp .env.example .env
    ```
 
-4. Generate Prisma client:
-   ```bash
-   npx prisma generate
-   ```
-
-5. Run the development server:
+4. Run the development server:
    ```bash
    npm run dev
    ```

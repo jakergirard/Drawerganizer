@@ -3,15 +3,5 @@ node_modules
 .git
 .env*
 *.log
-.vscode
-.idea
-*.md
-docker*
-.gitignore
-.dockerignore
-npm-debug.log*
 .DS_Store
-*.pem
-.env*
 *.db
-prisma/*.db

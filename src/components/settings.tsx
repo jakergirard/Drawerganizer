@@ -13,22 +13,31 @@ import { Settings as SettingsIcon } from 'lucide-react'
 import { ThemeToggle } from "./theme-toggle"
 import { Input } from "@/components/ui/input"
 import { useState, useEffect, useRef } from "react"
+import { Switch } from "@/components/ui/switch"
 
 export function Settings() {
-  const [cupsServer, setCupsServer] = useState("")
-  const [queueName, setQueueName] = useState("")
+  const [settings, setSettings] = useState({
+    cupsServer: "",
+    queueName: "",
+    virtualPrinting: false
+  });
   const closeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     const savedCupsServer = localStorage.getItem("cupsServer") || ""
     const savedQueueName = localStorage.getItem("queueName") || ""
-    setCupsServer(savedCupsServer)
-    setQueueName(savedQueueName)
+    const savedVirtualPrinting = localStorage.getItem("virtualPrinting") === "true"
+    setSettings({
+      cupsServer: savedCupsServer,
+      queueName: savedQueueName,
+      virtualPrinting: savedVirtualPrinting
+    })
   }, [])
 
   const handleSave = () => {
-    localStorage.setItem("cupsServer", cupsServer)
-    localStorage.setItem("queueName", queueName)
+    localStorage.setItem("cupsServer", settings.cupsServer)
+    localStorage.setItem("queueName", settings.queueName)
+    localStorage.setItem("virtualPrinting", settings.virtualPrinting.toString())
     closeRef.current?.click()
   }
 
@@ -43,25 +52,32 @@ export function Settings() {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span>Theme</span>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between space-x-4">
+            <span className="text-sm font-medium">Theme</span>
             <ThemeToggle />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">CUPS Server IP</label>
+            <span className="text-sm font-medium">CUPS Server IP</span>
             <Input
-              value={cupsServer}
-              onChange={(e) => setCupsServer(e.target.value)}
+              value={settings.cupsServer}
+              onChange={(e) => setSettings({ ...settings, cupsServer: e.target.value })}
               placeholder="e.g., 192.168.1.100:631"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Printer Queue Name</label>
+            <span className="text-sm font-medium">Printer Queue Name</span>
             <Input
-              value={queueName}
-              onChange={(e) => setQueueName(e.target.value)}
+              value={settings.queueName}
+              onChange={(e) => setSettings({ ...settings, queueName: e.target.value })}
               placeholder="e.g., DYMO_LabelWriter_450_Turbo"
+            />
+          </div>
+          <div className="flex items-center justify-between space-x-4">
+            <span className="text-sm font-medium">Print Preview</span>
+            <Switch
+              checked={settings.virtualPrinting}
+              onCheckedChange={(checked) => setSettings({ ...settings, virtualPrinting: checked })}
             />
           </div>
           <Button onClick={handleSave} className="w-full">Save Settings</Button>

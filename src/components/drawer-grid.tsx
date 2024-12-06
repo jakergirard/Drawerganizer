@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { debounce } from 'lodash';
 import { toast } from 'sonner';
+import { LabelPreviewModal } from './label-preview-modal';
 
 const ROW_LABELS = Array.from({ length: 12 }, (_, i) => 
   String.fromCharCode(65 + i)
@@ -523,17 +524,13 @@ export const DrawerGrid = () => {
       }));
     };
 
-    const DrawerModal = ({ 
-      drawer, 
-      onDrawerUpdate 
-    }: { 
-      drawer: Drawer;
-      onDrawerUpdate: (drawerId: string, updatedDrawer: Drawer) => void;
-    }) => {
+    const DrawerModal = ({ drawer, onDrawerUpdate }: { drawer: Drawer; onDrawerUpdate: (drawerId: string, updatedDrawer: Drawer) => void }) => {
       const [showAdvanced, setShowAdvanced] = useState(false);
       const [name, setName] = useState(drawer.name || '');
       const [keywords, setKeywords] = useState(drawer.keywords.join(', '));
       const [localSize, setLocalSize] = useState<DrawerSize>(drawer.size);
+      const [previewImage, setPreviewImage] = useState<string>();
+      const [isPreviewOpen, setIsPreviewOpen] = useState(false);
       const sizeConfig = drawer.isRightSection ? SIZES.RIGHT : SIZES.LEFT;
       const drawerSize = sizeConfig[drawer.size];
       const currentSpacing = (drawer.isRightSection && drawer.size === 'SMALL') || 
@@ -555,169 +552,211 @@ export const DrawerGrid = () => {
       };
       
       return (
-        <div style={{ 
-          display: 'flex', 
-          width: `${drawerSize.width + currentSpacing}px`,
-          position: 'relative'
-        }}>
-          <Card 
-            style={{
-              width: `${drawerSize.width}px`,
-              height: `${drawerSize.height}px`,
-              marginRight: `${DRAWER_GAP}px`,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative'
-            }}
-            className={`
-              cursor-pointer 
-              hover:bg-gray-700 
-              transition-colors 
-              duration-200
-              ${isDrawerVisible(drawer) ? 'opacity-100' : 'opacity-30'}
-            `}
-          >
-            <div className="absolute inset-0">
-              {drawer.name ? (
-                <div className="w-full h-full flex items-center justify-center p-2">
-                  <AutoResizingText 
-                    text={drawer.name} 
-                    width={drawerSize.width - 16} 
-                    height={drawerSize.height - 16}
-                  />
-                </div>
-              ) : (
-                <div className="absolute top-1 left-2 text-xs text-muted-foreground opacity-50">
-                  {drawer.title}
-                </div>
-              )}
-            </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <div className="absolute inset-0" />
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Drawer {drawer.title}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Name</label>
-                    <textarea
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter drawer name"
-                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        <>
+          <div style={{ 
+            display: 'flex', 
+            width: `${drawerSize.width + currentSpacing}px`,
+            position: 'relative'
+          }}>
+            <Card 
+              style={{
+                width: `${drawerSize.width}px`,
+                height: `${drawerSize.height}px`,
+                marginRight: `${DRAWER_GAP}px`,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative'
+              }}
+              className={`
+                cursor-pointer 
+                hover:bg-gray-700 
+                transition-colors 
+                duration-200
+                ${isDrawerVisible(drawer) ? 'opacity-100' : 'opacity-30'}
+              `}
+            >
+              <div className="absolute inset-0">
+                {drawer.name ? (
+                  <div className="w-full h-full flex items-center justify-center p-2">
+                    <AutoResizingText 
+                      text={drawer.name} 
+                      width={drawerSize.width - 16} 
+                      height={drawerSize.height - 16}
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Keywords</label>
-                    <textarea
-                      value={keywords}
-                      onChange={(e) => setKeywords(e.target.value)}
-                      placeholder="Enter comma-separated keywords"
-                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                    <p className="text-xs text-muted-foreground mb-6">Separate keywords with commas (e.g. key1, key2, key3)</p>
+                ) : (
+                  <div className="absolute top-1 left-2 text-xs text-muted-foreground opacity-50">
+                    {drawer.title}
                   </div>
-
-                  <div className={`border rounded-lg transition-all duration-200 ${
-                    showAdvanced ? '' : 'border'
-                  }`}>
-                    <Button
-                      variant={showAdvanced ? "ghost" : "outline"}
-                      onClick={() => setShowAdvanced(!showAdvanced)}
-                      className={`w-full justify-between ${
-                        showAdvanced ? 'rounded-t-lg border-b' : 'rounded-lg'
-                      }`}
-                    >
-                      <span>Advanced Settings</span>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-                    </Button>
+                )}
+              </div>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <div className="absolute inset-0" />
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Drawer {drawer.title}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Name</label>
+                      <textarea
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Enter drawer name"
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
                     
-                    <div className={`space-y-4 px-4 transition-all duration-200 ${
-                      showAdvanced ? 'py-4 h-auto opacity-100' : 'h-0 opacity-0 overflow-hidden'
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Keywords</label>
+                      <textarea
+                        value={keywords}
+                        onChange={(e) => setKeywords(e.target.value)}
+                        placeholder="Enter comma-separated keywords"
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                      <p className="text-xs text-muted-foreground mb-6">Separate keywords with commas (e.g. key1, key2, key3)</p>
+                    </div>
+
+                    <div className={`border rounded-lg transition-all duration-200 ${
+                      showAdvanced ? '' : 'border'
                     }`}>
-                      <label className="text-sm font-medium">Size</label>
-                      <div className="flex gap-2">
-                        {Object.keys(sizeConfig).map((size) => (
-                          <Button
-                            key={size}
-                            variant={localSize === size ? "default" : "outline"}
-                            onClick={() => setLocalSize(size as DrawerSize)}
-                            disabled={
-                              drawer.isRightSection ?
-                                (size === 'LARGE' && drawer.positions[0] >= 15) :
-                                (size !== 'SMALL' && 
-                                 drawer.positions[0] + SIZES.LEFT[size as keyof typeof SIZES.LEFT].span - 1 > 9)
-                            }
-                          >
-                            {sizeConfig[size as keyof typeof sizeConfig].label}
-                          </Button>
-                        ))}
+                      <Button
+                        variant={showAdvanced ? "ghost" : "outline"}
+                        onClick={() => setShowAdvanced(!showAdvanced)}
+                        className={`w-full justify-between ${
+                          showAdvanced ? 'rounded-t-lg border-b' : 'rounded-lg'
+                        }`}
+                      >
+                        <span>Advanced Settings</span>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+                      </Button>
+                      
+                      <div className={`space-y-4 px-4 transition-all duration-200 ${
+                        showAdvanced ? 'py-4 h-auto opacity-100' : 'h-0 opacity-0 overflow-hidden'
+                      }`}>
+                        <label className="text-sm font-medium">Size</label>
+                        <div className="flex gap-2">
+                          {Object.keys(sizeConfig).map((size) => (
+                            <Button
+                              key={size}
+                              variant={localSize === size ? "default" : "outline"}
+                              onClick={() => setLocalSize(size as DrawerSize)}
+                              disabled={
+                                drawer.isRightSection ?
+                                  (size === 'LARGE' && drawer.positions[0] >= 15) :
+                                  (size !== 'SMALL' && 
+                                   drawer.positions[0] + SIZES.LEFT[size as keyof typeof SIZES.LEFT].span - 1 > 9)
+                              }
+                            >
+                              {sizeConfig[size as keyof typeof sizeConfig].label}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex gap-2 w-full">
-                    <Button onClick={handleSave} className="flex-1">
-                      Save Changes
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={!name}
-                      onClick={async () => {
-                        const cupsServer = localStorage.getItem("cupsServer")
-                        const queueName = localStorage.getItem("queueName")
-                        
-                        if (!cupsServer || !queueName) {
-                          toast.error("Please configure CUPS server and queue name in settings");
-                          return;
-                        }
-
-                        try {
-                          const printResponse = await fetch('/api/print', {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                              text: name || drawer.title,
-                              server: cupsServer,
-                              queue: queueName
-                            }),
-                          });
-
-                          const result = await printResponse.json();
-
-                          if (!printResponse.ok) {
-                            throw new Error(result.error || 'Print failed');
-                          }
+                    
+                    <div className="flex gap-2 w-full">
+                      <Button onClick={handleSave} className="flex-1">
+                        Save Changes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={!name}
+                        onClick={async () => {
+                          const cupsServer = localStorage.getItem("cupsServer")
+                          const queueName = localStorage.getItem("queueName")
+                          const virtualPrinting = localStorage.getItem("virtualPrinting") === "true"
                           
-                          toast.success('Label printed successfully');
-                        } catch (error) {
-                          toast.error('Print failed. Please check your CUPS configuration.');
-                        }
-                      }}
-                    >
-                      <Printer className="h-4 w-4" />
-                    </Button>
+                          if (!cupsServer || !queueName) {
+                            toast.error("Please configure CUPS server and queue name in settings");
+                            return;
+                          }
+
+                          try {
+                            const response = await fetch('/api/print', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                text: name || drawer.title,
+                                server: cupsServer,
+                                queue: queueName,
+                                preview: virtualPrinting
+                              }),
+                            });
+
+                            const result = await response.json();
+
+                            if (!response.ok) {
+                              throw new Error(result.error || 'Operation failed');
+                            }
+
+                            if (virtualPrinting) {
+                              setPreviewImage(result.imageData);
+                              setIsPreviewOpen(true);
+                            } else {
+                              toast.success('Label printed successfully');
+                            }
+                          } catch (error) {
+                            toast.error('Operation failed. Please check your configuration.');
+                          }
+                        }}
+                      >
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </Card>
-          {drawer.spacing > 0 && (
-            <div style={{ 
-              width: `${drawer.spacing}px`,
-              height: `${drawerSize.height}px`,
-              backgroundColor: 'transparent'
-            }} />
-          )}
-        </div>
+                </DialogContent>
+              </Dialog>
+            </Card>
+            {drawer.spacing > 0 && (
+              <div style={{ 
+                width: `${drawer.spacing}px`,
+                height: `${drawerSize.height}px`,
+                backgroundColor: 'transparent'
+              }} />
+            )}
+          </div>
+          
+          <LabelPreviewModal
+            isOpen={isPreviewOpen}
+            onClose={() => setIsPreviewOpen(false)}
+            imageData={previewImage}
+            onPrint={async () => {
+              // Actual print when preview modal is confirmed
+              try {
+                const response = await fetch('/api/print', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    text: name || drawer.title,
+                    server: localStorage.getItem("cupsServer"),
+                    queue: localStorage.getItem("queueName"),
+                    preview: false
+                  }),
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                  throw new Error(result.error || 'Print failed');
+                }
+                
+                toast.success('Label printed successfully');
+                setIsPreviewOpen(false);
+              } catch (error) {
+                toast.error('Print failed. Please check your CUPS configuration.');
+              }
+            }}
+          />
+        </>
       );
     };
     

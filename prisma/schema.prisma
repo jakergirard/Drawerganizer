@@ -1,16 +1,13 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model Drawer {
@@ -22,4 +19,12 @@ model Drawer {
   isRightSection Boolean
   keywords      String
   spacing       Int
+}
+
+model PrinterConfig {
+  id              String   @id @default("default")
+  cupsServer      String
+  queueName       String
+  virtualPrinting Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
 }

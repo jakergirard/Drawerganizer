@@ -1,71 +1,56 @@
 FROM node:18-alpine AS base
 
-# Install only necessary system dependencies for canvas and JPEG
-RUN apk add --no-cache \
-    libc6-compat \
-    build-base \
-    cairo-dev \
-    jpeg-dev \
-    pkgconfig
-
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
-COPY prisma ./prisma/
+# Install build dependencies
+RUN apk add --no-cache python3 make g++ pkgconfig cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev
 
-# Install dependencies
-RUN npm ci
-RUN npx prisma generate
+# Copy package files
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# Install build dependencies in builder stage too
+RUN apk add --no-cache python3 make g++ pkgconfig cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev cairo pango jpeg giflib librsvg
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Disable Next.js telemetry during the build
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build the application
+# Generate Prisma client
+RUN npx prisma generate
+
 RUN npm run build
 
 # Production image, copy all the files and run next
-FROM node:18-alpine AS runner
+FROM base AS runner
 WORKDIR /app
 
-# Install only runtime dependencies
-RUN apk add --no-cache \
-    cairo \
-    jpeg
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1 \
-    PORT=3000 \
-    HOSTNAME="0.0.0.0"
+# Install runtime dependencies and build tools
+RUN apk add --no-cache python3 make g++ pkgconfig cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev cairo pango jpeg giflib librsvg
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    mkdir /data && \
-    chown nextjs:nodejs /data
+# Copy package files and install production dependencies
+COPY package*.json ./
+RUN npm install --production --legacy-peer-deps
 
-# Copy necessary files
+# Copy necessary files from builder
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Set the correct permissions
-RUN chown -R nextjs:nodejs .
-
-# Switch to non-root user
-USER nextjs
-
-# Expose the port
 EXPOSE 3000
 
-# Start the application
+ENV PORT=3000
+
 CMD ["node", "server.js"]

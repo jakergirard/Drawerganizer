@@ -5,11 +5,6 @@ export interface PrintMessage {
     "document-format": string;
     "printer-uri": string;
   };
-  "job-attributes-tag": {
-    "copies": number;
-    "orientation-requested": number;
-    "print-quality": number
-  };
   data: Buffer;
 }
 

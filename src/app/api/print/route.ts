@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
-import { createCanvas } from 'canvas';
-import { drawText } from '@/lib/canvas-txt-wrapper';
+import { createCanvas, registerFont } from 'canvas';
+import { draw_text } from '@/lib/canvas-txt-wrapper';
 import { getPrinterConfig } from '@/lib/db';
 import * as ipp from 'ipp';
+import path from 'path';
+
+interface IPPResponse {
+  'job-id'?: number;
+  [key: string]: any;
+}
+
+// Register Arial font
+registerFont(path.join(process.cwd(), 'public/fonts/arial.ttf'), { family: 'Arial' });
 
 // Constants for 25x54mm label at 300 DPI
 const DPI = 300;
@@ -13,110 +22,112 @@ const LABEL_WIDTH_PIXELS = Math.floor(LABEL_WIDTH_MM * MM_TO_INCHES * DPI);
 const LABEL_HEIGHT_PIXELS = Math.floor(LABEL_HEIGHT_MM * MM_TO_INCHES * DPI);
 const MARGIN_MM = 2;
 const MARGIN_PIXELS = Math.floor(MARGIN_MM * MM_TO_INCHES * DPI);
-const FONT_SIZE = 48;
-const LINE_SPACING = 1.2;
-const FONT_FAMILY = 'Arial';
 
-interface IPPResponse {
-    'job-id'?: number;
-    [key: string]: any;
-}
+export async function POST(request: Request) {
+  try {
+    const { text } = await request.json();
+    const printerConfig = await getPrinterConfig();
 
-async function renderLabel(text: string): Promise<Buffer> {
+    if (!printerConfig) {
+      return NextResponse.json(
+        { error: 'Printer configuration not found' },
+        { status: 400 }
+      );
+    }
+
+    if (printerConfig.virtual_printing) {
+      // Create a canvas for preview
+      const canvas = createCanvas(LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS);
+      const ctx = canvas.getContext('2d');
+
+      // Set white background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS);
+
+      // Set text properties
+      ctx.fillStyle = 'black';
+      await draw_text(ctx, text, {
+        x: MARGIN_PIXELS,
+        y: MARGIN_PIXELS,
+        width: LABEL_WIDTH_PIXELS - (2 * MARGIN_PIXELS),
+        height: LABEL_HEIGHT_PIXELS - (2 * MARGIN_PIXELS),
+        font_size: 48,
+        font: 'Arial',
+        align: 'center',
+        v_align: 'middle',
+        line_height: 1.2
+      });
+
+      // Convert canvas to base64 for preview
+      const imageData = canvas.toDataURL();
+      return NextResponse.json({ imageData });
+    }
+
+    if (!printerConfig.printer_name) {
+      return NextResponse.json(
+        { error: 'Printer not configured' },
+        { status: 400 }
+      );
+    }
+
+    // Create a canvas for printing
     const canvas = createCanvas(LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS);
     const ctx = canvas.getContext('2d');
 
-    // White background
+    // Set white background
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS);
 
-    // Set text color
+    // Set text properties
     ctx.fillStyle = 'black';
+    await draw_text(ctx, text, {
+      x: MARGIN_PIXELS,
+      y: MARGIN_PIXELS,
+      width: LABEL_WIDTH_PIXELS - (2 * MARGIN_PIXELS),
+      height: LABEL_HEIGHT_PIXELS - (2 * MARGIN_PIXELS),
+      font_size: 48,
+      font: 'Arial',
+      align: 'center',
+      v_align: 'middle',
+      line_height: 1.2
+    });
 
-    // Split text into paragraphs by newlines
-    const paragraphs = text.split('\n');
-    const totalHeight = paragraphs.length * FONT_SIZE * LINE_SPACING;
-    let startY = (LABEL_HEIGHT_PIXELS - totalHeight) / 2;
+    // Convert canvas to PNG buffer
+    const buffer = canvas.toBuffer('image/png');
 
-    // Draw each paragraph
-    for (const paragraph of paragraphs) {
-        await drawText(ctx, paragraph, {
-            x: MARGIN_PIXELS,
-            y: startY,
-            width: LABEL_WIDTH_PIXELS - (2 * MARGIN_PIXELS),
-            height: FONT_SIZE * LINE_SPACING,
-            fontSize: FONT_SIZE,
-            font: FONT_FAMILY,
-            align: 'center',
-            vAlign: 'middle',
-            lineHeight: LINE_SPACING
-        });
-        startY += FONT_SIZE * LINE_SPACING;
-    }
+    // Create IPP message
+    const printer = new ipp.Printer(`ipp://${printerConfig.host}:${printerConfig.port}/printers/${printerConfig.printer_name}`);
+    const msg = {
+      "operation-attributes-tag": {
+        "requesting-user-name": "User",
+        "job-name": "Label Print",
+        "document-format": "image/png",
+        "printer-uri": `ipp://${printerConfig.host}:${printerConfig.port}/printers/${printerConfig.printer_name}`
+      },
+      data: buffer
+    };
 
-    return canvas.toBuffer('image/jpeg', { quality: 1.0 });
-}
-
-export async function POST(request: Request) {
-    try {
-        const { text } = await request.json();
-        const imageBuffer = await renderLabel(text);
-
-        // Get printer configuration from database
-        const config = await getPrinterConfig();
-        
-        if (!config) {
-            return NextResponse.json(
-                { error: 'Printer configuration not found. Please configure printer settings first.' },
-                { status: 400 }
-            );
+    // Send print job
+    const response = await new Promise<IPPResponse>((resolve, reject) => {
+      (printer as any).printJob(msg, function(err: any, res: IPPResponse) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(res);
         }
+      });
+    });
 
-        // Handle virtual printing mode
-        if (config.virtualPrinting) {
-            const base64Image = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
-            return NextResponse.json({ success: true, imageData: base64Image });
-        }
-
-        // Print logic
-        const printerUrl = `ipp://${config.host}:${config.port}/printers/${config.printerName}`;
-        const printer = new ipp.Printer(printerUrl);
-        
-        const msg = {
-            "operation-attributes-tag": {
-                "requesting-user-name": "drawer-system",
-                "job-name": "drawer-label",
-                "document-format": "image/jpeg",
-                "printer-uri": printerUrl,
-            },
-            data: imageBuffer
-        };
-
-        const response = await new Promise<IPPResponse>((resolve, reject) => {
-            (printer as any).execute("Print-Job", msg, function(err: Error | null, res: IPPResponse) {
-                if (err) {
-                    console.error('IPP Error:', err);
-                    reject(err);
-                } else {
-                    console.log('Print response:', res);
-                    resolve(res);
-                }
-            });
-        });
-        
-        return NextResponse.json({ 
-            success: true, 
-            jobId: response?.['job-id'],
-            details: response 
-        });
-    } catch (error) {
-        console.error('Operation error:', error);
-        if (error instanceof Error) {
-            console.error('Error stack:', error.stack);
-        }
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Operation failed' }, 
-            { status: 500 }
-        );
-    }
+    return NextResponse.json({
+      success: true,
+      jobId: response?.['job-id'],
+      details: response
+    });
+  } catch (error) {
+    console.error('Print error:', error);
+    return NextResponse.json(
+      { error: 'Failed to print' },
+      { status: 500 }
+    );
+  }
 }

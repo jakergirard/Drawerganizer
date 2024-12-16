@@ -1,4 +1,4 @@
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,11 @@ RUN apk add --no-cache \
     pango-dev \
     jpeg-dev \
     giflib-dev \
-    librsvg-dev
+    librsvg-dev \
+    sqlite-dev
+
+# Update npm to latest version
+RUN npm install -g npm@10.9.2
 
 # Install all dependencies including dev dependencies
 COPY package*.json ./
@@ -22,10 +26,11 @@ RUN npm install --legacy-peer-deps
 COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL="file:/app/data/database.db"
 RUN npm run build
 
 # Production image
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -36,7 +41,8 @@ RUN apk add --no-cache \
     jpeg \
     giflib \
     librsvg \
-    sqlite
+    sqlite \
+    sqlite-dev
 
 # Copy production files
 COPY --from=builder /app/.next/standalone ./

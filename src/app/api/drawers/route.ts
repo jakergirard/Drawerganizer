@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getAllDrawers, createDrawer, getDb, deleteDrawer } from '@/lib/db';
+import { getAllDrawers, createDrawer, deleteDrawer, updateAllDrawers } from '@/lib/db';
 import type { Drawer } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
     try {
-        const drawers = await getAllDrawers();
+        const drawers = getAllDrawers();
+        logger.debug('GET /api/drawers - Retrieved drawers:', { count: drawers.length, drawers });
         return NextResponse.json(drawers);
     } catch (error) {
-        console.error('Failed to fetch drawers:', error);
+        logger.error('Failed to fetch drawers', error instanceof Error ? error : new Error(String(error)));
         return NextResponse.json({ error: 'Failed to fetch drawers' }, { status: 500 });
     }
 }
@@ -15,33 +17,43 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const drawer = await request.json() as Drawer;
-        await createDrawer(drawer);
+        logger.debug('POST /api/drawers - Received drawer:', { drawer });
+        drawer.is_right_section = Boolean(drawer.is_right_section);
+        createDrawer(drawer);
+        logger.debug('POST /api/drawers - Created drawer successfully');
         return NextResponse.json(drawer);
     } catch (error) {
-        console.error('Failed to create drawer:', error);
+        logger.error('Failed to create drawer', error instanceof Error ? error : new Error(String(error)));
         return NextResponse.json({ error: 'Failed to create drawer' }, { status: 500 });
     }
 }
 
 export async function PUT(request: Request) {
     try {
-        const drawers = await request.json();
-        const db = await getDb();
+        const drawers = await request.json() as Drawer[];
+        logger.debug('PUT /api/drawers - Received drawers:', { count: drawers.length, drawers });
         
-        // Delete all existing drawers
-        await db.run('DELETE FROM Drawer');
+        const normalizedDrawers = drawers.map(drawer => ({
+            id: drawer.id,
+            size: drawer.size,
+            title: drawer.title,
+            name: drawer.name,
+            positions: drawer.positions,
+            is_right_section: Boolean(drawer.is_right_section),
+            keywords: drawer.keywords,
+            spacing: drawer.spacing
+        }));
         
-        // Create new drawers with the updated data
-        for (const drawer of drawers) {
-            await db.run(
-                'INSERT INTO Drawer (id, size, title, name, positions, isRightSection, keywords, spacing) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [drawer.id, drawer.size, drawer.title, drawer.name || null, drawer.positions, drawer.isRightSection ? 1 : 0, drawer.keywords, drawer.spacing]
-            );
-        }
+        logger.debug('PUT /api/drawers - Normalized drawers:', { count: normalizedDrawers.length, normalizedDrawers });
+        updateAllDrawers(normalizedDrawers);
+        
+        // Verify the update
+        const updatedDrawers = getAllDrawers();
+        logger.debug('PUT /api/drawers - Verification after update:', { count: updatedDrawers.length, updatedDrawers });
         
         return NextResponse.json({ success: true, count: drawers.length });
     } catch (error) {
-        console.error('Failed to update drawers:', error);
+        logger.error('Failed to update drawers', error instanceof Error ? error : new Error(String(error)));
         return NextResponse.json({ error: 'Failed to update drawers' }, { status: 500 });
     }
 }
@@ -49,10 +61,11 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
     try {
         const { id } = await request.json();
-        await deleteDrawer(id);
+        logger.debug('DELETE /api/drawers - Deleting drawer:', { id });
+        deleteDrawer(id);
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Failed to delete drawer:', error);
+        logger.error('Failed to delete drawer', error instanceof Error ? error : new Error(String(error)));
         return NextResponse.json({ error: 'Failed to delete drawer' }, { status: 500 });
     }
 }

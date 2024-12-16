@@ -7,23 +7,23 @@ import { Switch } from "@/components/ui/switch"
 
 export function ThemeToggle() {
   const { theme, setTheme, systemTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
+  const [is_mounted, set_is_mounted] = React.useState(false)
 
   React.useEffect(() => {
-    setMounted(true)
+    set_is_mounted(true)
   }, [])
 
-  if (!mounted) {
+  if (!is_mounted) {
     return null
   }
 
-  const isDark = theme === "dark" || (theme === "system" && systemTheme === "dark")
+  const is_dark = theme === "dark" || (theme === "system" && systemTheme === "dark")
 
   return (
     <div className="flex items-center gap-2">
       <Sun className="h-4 w-4" />
       <Switch
-        checked={isDark}
+        checked={is_dark}
         onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
       />
       <Moon className="h-4 w-4" />

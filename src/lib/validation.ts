@@ -18,8 +18,8 @@ export function validateDrawerInput(data: any): void {
     if (!data.positions || typeof data.positions !== 'string') {
         throw new ValidationError('Positions is required and must be a string');
     }
-    if (typeof data.isRightSection !== 'boolean') {
-        throw new ValidationError('isRightSection must be a boolean');
+    if (typeof data.is_right_section !== 'boolean') {
+        throw new ValidationError('is_right_section must be a boolean');
     }
     if (!data.keywords || typeof data.keywords !== 'string') {
         throw new ValidationError('Keywords is required and must be a string');
@@ -30,7 +30,7 @@ export function validateDrawerInput(data: any): void {
 }
 
 export function validatePrinterConfigInput(data: any): void {
-    if (!data.printerName || typeof data.printerName !== 'string') {
+    if (!data.printer_name || typeof data.printer_name !== 'string') {
         throw new ValidationError('Printer name is required and must be a string');
     }
     if (!data.host || typeof data.host !== 'string') {
@@ -54,8 +54,8 @@ export function validatePartialDrawerInput(data: any): void {
     if (data.positions !== undefined && typeof data.positions !== 'string') {
         throw new ValidationError('Positions must be a string');
     }
-    if (data.isRightSection !== undefined && typeof data.isRightSection !== 'boolean') {
-        throw new ValidationError('isRightSection must be a boolean');
+    if (data.is_right_section !== undefined && typeof data.is_right_section !== 'boolean') {
+        throw new ValidationError('is_right_section must be a boolean');
     }
     if (data.keywords !== undefined && typeof data.keywords !== 'string') {
         throw new ValidationError('Keywords must be a string');
@@ -69,7 +69,7 @@ export function validatePartialPrinterConfigInput(data: any): void {
     if (data.id !== undefined) {
         throw new ValidationError('ID cannot be updated');
     }
-    if (data.printerName !== undefined && typeof data.printerName !== 'string') {
+    if (data.printer_name !== undefined && typeof data.printer_name !== 'string') {
         throw new ValidationError('Printer name must be a string');
     }
     if (data.host !== undefined && typeof data.host !== 'string') {

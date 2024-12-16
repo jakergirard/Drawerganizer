@@ -15,6 +15,9 @@ import {
 import { debounce } from 'lodash';
 import { toast } from 'sonner';
 import { LabelPreviewModal } from './label-preview-modal';
+import { logger } from '@/lib/logger';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 
 const ROW_LABELS = Array.from({ length: 12 }, (_, i) => 
   String.fromCharCode(65 + i)
@@ -30,21 +33,23 @@ const DRAWER_GAP = 4;
 type DrawerSize = 'SMALL' | 'MEDIUM' | 'LARGE';
 
 // Update the Drawer interface
-interface Drawer {
+interface DrawerData {
   id: string;
   size: DrawerSize;
   title: string;
-  name?: string;
-  positions: number[];
-  isRightSection: boolean;
-  keywords: string[];
+  name: string | null;
+  positions: string;
+  is_right_section: boolean;
+  keywords: string;
   spacing: number;
+  created_at: Date;
+  updated_at: Date;
 }
 
 interface BaseSize {
   width: number;
   height: number;
-  mediumBaseWidth: number;
+  medium_base_width: number;
 }
 
 interface SizeConfig {
@@ -91,12 +96,12 @@ class ErrorBoundary extends React.Component<
 }
 
 const AutoResizingText = ({ text, width, height }: { text: string, width: number, height: number }) => {
-  const [fontSize, setFontSize] = useState(12);
-  const textRef = useRef<HTMLDivElement>(null);
+  const [font_size, set_font_size] = useState(12);
+  const text_ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const resizeText = () => {
-      const element = textRef.current;
+    const resize_text = () => {
+      const element = text_ref.current;
       if (!element) return;
 
       let size = 12;
@@ -118,19 +123,19 @@ const AutoResizingText = ({ text, width, height }: { text: string, width: number
         element.style.fontSize = `${size}px`;
       }
 
-      setFontSize(size);
+      set_font_size(size);
     };
 
-    resizeText();
-    window.addEventListener('resize', resizeText);
-    return () => window.removeEventListener('resize', resizeText);
+    resize_text();
+    window.addEventListener('resize', resize_text);
+    return () => window.removeEventListener('resize', resize_text);
   }, [text, width, height]);
 
   return (
     <div
-      ref={textRef}
+      ref={text_ref}
       style={{
-        fontSize: `${fontSize}px`,
+        fontSize: `${font_size}px`,
         width: `${width}px`,
         height: `${height}px`,
         overflow: 'hidden',
@@ -149,58 +154,62 @@ const AutoResizingText = ({ text, width, height }: { text: string, width: number
 };
 
 export const DrawerGrid = () => {
-    const [baseSize, setBaseSize] = useState<BaseSize>({ width: 0, height: 0, mediumBaseWidth: 0 });
+    const [base_size, set_base_size] = useState<BaseSize>({ 
+      width: 0, 
+      height: 0, 
+      medium_base_width: 0 
+    });
     
-    const calculateBaseSize = useCallback(() => {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+    const calculate_base_size = useCallback(() => {
+      const viewport_width = window.innerWidth;
+      const viewport_height = window.innerHeight;
       const padding = 48;
-      const topSpace = 80;
-      const rowLabelWidth = 24; // width of the row label container
+      const top_space = 80;
+      const row_label_width = 24;
       
-      const totalWidth = Math.max(0, viewportWidth - padding);
-      const sectionWidth = Math.max(0, (totalWidth - (rowLabelWidth * 3)) / 2); // account for both row label columns
+      const total_width = Math.max(0, viewport_width - padding);
+      const section_width = Math.max(0, (total_width - (row_label_width * 3)) / 2);
       
-      const smallDrawerWidth = Math.max(0, (sectionWidth - (8 * DRAWER_GAP)) / 9);
-      const mediumDrawerWidth = Math.max(0, (sectionWidth - (5 * DRAWER_GAP)) / 6);
+      const small_drawer_width = Math.max(0, (section_width - (8 * DRAWER_GAP)) / 9);
+      const medium_drawer_width = Math.max(0, (section_width - (5 * DRAWER_GAP)) / 6);
       
-      const availableHeight = Math.max(0, viewportHeight - padding - topSpace);
-      const drawerHeight = Math.max(0, (availableHeight - (11 * DRAWER_GAP)) / 12);
+      const available_height = Math.max(0, viewport_height - padding - top_space);
+      const drawer_height = Math.max(0, (available_height - (11 * DRAWER_GAP)) / 12);
       
-      setBaseSize({
-        width: smallDrawerWidth,
-        mediumBaseWidth: mediumDrawerWidth,
-        height: drawerHeight
+      set_base_size({
+        width: small_drawer_width,
+        medium_base_width: medium_drawer_width,
+        height: drawer_height
       });
     }, []);
   
     useEffect(() => {
-      calculateBaseSize();
-      window.addEventListener('resize', calculateBaseSize);
+      calculate_base_size();
+      window.addEventListener('resize', calculate_base_size);
       return () => {
-        window.removeEventListener('resize', calculateBaseSize);
+        window.removeEventListener('resize', calculate_base_size);
       };
-    }, [calculateBaseSize]);
+    }, [calculate_base_size]);
   
     const SIZES: Sizes = {
       LEFT: {
         SMALL: {
-          width: baseSize.width,
-          height: baseSize.height,
+          width: base_size.width,
+          height: base_size.height,
           label: 'Small',
           span: 1,
           spacing: 0
         },
         MEDIUM: {
-          width: (baseSize.width * 1.5),
-          height: baseSize.height,
+          width: (base_size.width * 1.5),
+          height: base_size.height,
           label: 'Medium',
           span: 1.5,
-          spacing: baseSize.width * 0.5
+          spacing: base_size.width * 0.5
         },
         LARGE: {
-          width: (baseSize.width * 3),  // Removed DRAWER_GAP
-          height: baseSize.height,
+          width: (base_size.width * 3),  // Removed DRAWER_GAP
+          height: base_size.height,
           label: 'Large',
           span: 3,
           spacing: 0
@@ -208,22 +217,22 @@ export const DrawerGrid = () => {
       },
       RIGHT: {
         SMALL: {
-          width: baseSize.mediumBaseWidth * 0.75,
-          height: baseSize.height,
+          width: base_size.medium_base_width * 0.75,
+          height: base_size.height,
           label: 'Small',
           span: 1,
-          spacing: baseSize.mediumBaseWidth * 0.25  // This will now update dynamically with window resizing
+          spacing: base_size.medium_base_width * 0.25  // This will now update dynamically with window resizing
         },
         MEDIUM: {
-          width: baseSize.mediumBaseWidth,
-          height: baseSize.height,
+          width: base_size.medium_base_width,
+          height: base_size.height,
           label: 'Medium',
           span: 1,
           spacing: 0
         },
         LARGE: {
-          width: baseSize.mediumBaseWidth * 2,  // Removed DRAWER_GAP
-          height: baseSize.height,
+          width: base_size.medium_base_width * 2,  // Removed DRAWER_GAP
+          height: base_size.height,
           label: 'Large',
           span: 2,
           spacing: 0
@@ -231,274 +240,347 @@ export const DrawerGrid = () => {
       }
     };
   
-    const [drawers, setDrawers] = useState<Record<string, Drawer>>(() => {
-      const initial: Record<string, Drawer> = {};
-      ROW_LABELS.forEach(row => {
-        for (let col = 1; col <= 9; col++) {
-          initial[`${row}${col}`] = {
-            id: `${row}${col}`,
-            size: 'SMALL',
-            title: `${row}${col.toString().padStart(2, '0')}`,
-            positions: [col],
-            isRightSection: false,
-            keywords: [],
-            spacing: 0
-          };
-        }
-        for (let col = 10; col <= 15; col++) {
-          initial[`${row}${col}`] = {
-            id: `${row}${col}`,
-            size: 'MEDIUM',
-            title: `${row}${col.toString().padStart(2, '0')}`,
-            positions: [col],
-            isRightSection: true,
-            keywords: [],
-            spacing: 0
-          };
-        }
-      });
-      return initial;
-    });
-
-    useEffect(() => {
-      fetch('/api/drawers')
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.length > 0) {
-            const drawersMap = data.reduce((acc: Record<string, Drawer>, drawer: any) => {
-              acc[drawer.id] = {
-                ...drawer,
-                positions: JSON.parse(drawer.positions),
-                keywords: JSON.parse(drawer.keywords)
-              };
-              return acc;
-            }, {});
-            setDrawers(drawersMap);
-          }
-        });
-    }, []);
+    const [drawers, set_drawers] = useState<Record<string, DrawerData>>({});
 
     // Add debounced save function
-    const debouncedSave = useCallback(
-      debounce((drawersData: Record<string, Drawer>) => {
-        const serializedDrawers = Object.values(drawersData).map(drawer => ({
+    const debounced_save = useCallback(
+      debounce((drawers_data: Record<string, DrawerData>) => {
+        const serializedDrawers = Object.values(drawers_data).map(drawer => ({
           ...drawer,
-          positions: JSON.stringify(drawer.positions),
-          keywords: JSON.stringify(drawer.keywords)
+          positions: Array.isArray(drawer.positions) ? 
+            JSON.stringify(drawer.positions) : drawer.positions,
+          keywords: Array.isArray(drawer.keywords) ? 
+            JSON.stringify(drawer.keywords) : drawer.keywords,
+          is_right_section: Boolean(drawer.is_right_section)  // Send as boolean
         }));
         
+        console.log('Saving drawers:', { count: serializedDrawers.length });
         fetch('/api/drawers', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(serializedDrawers),
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to save drawers');
+          }
+          console.log('Drawers saved successfully');
+        })
+        .catch(error => {
+          console.error('Failed to save drawers:', error);
         });
       }, 1000),
       []
     );
 
+    useEffect(() => {
+      console.log('Fetching drawers from API');
+      fetch('/api/drawers')
+        .then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch drawers');
+          }
+          return res.json();
+        })
+        .then(data => {
+          console.log('Received drawers from API:', { count: data?.length || 0 });
+          if (data && data.length > 0) {
+            const drawersMap = data.reduce((acc: Record<string, DrawerData>, drawer: any) => {
+              try {
+                const positions = typeof drawer.positions === 'string' ? 
+                  JSON.parse(drawer.positions) : drawer.positions;
+                const keywords = typeof drawer.keywords === 'string' ? 
+                  JSON.parse(drawer.keywords) : drawer.keywords;
+                
+                acc[drawer.id] = {
+                  ...drawer,
+                  positions,
+                  keywords,
+                  is_right_section: Boolean(drawer.is_right_section)
+                };
+              } catch (error) {
+                console.error(`Failed to parse drawer data for ${drawer.id}:`, error);
+              }
+              return acc;
+            }, {});
+            console.log('Processed drawers:', { count: Object.keys(drawersMap).length });
+            set_drawers(drawersMap);
+          } else {
+            // Initialize with default drawers if none exist
+            const initial: Record<string, DrawerData> = {};
+            ROW_LABELS.forEach(row => {
+              for (let col = 1; col <= 9; col++) {
+                const positions = [col];
+                initial[`${row}${col}`] = {
+                  id: `${row}${col}`,
+                  size: 'SMALL',
+                  title: `${row}${col.toString().padStart(2, '0')}`,
+                  name: null,
+                  positions: JSON.stringify(positions),
+                  is_right_section: false,
+                  keywords: JSON.stringify([]),
+                  spacing: 0,
+                  created_at: new Date(),
+                  updated_at: new Date()
+                };
+              }
+              for (let col = 10; col <= 15; col++) {
+                const positions = [col];
+                initial[`${row}${col}`] = {
+                  id: `${row}${col}`,
+                  size: 'MEDIUM',
+                  title: `${row}${col.toString().padStart(2, '0')}`,
+                  name: null,
+                  positions: JSON.stringify(positions),
+                  is_right_section: true,
+                  keywords: JSON.stringify([]),
+                  spacing: 0,
+                  created_at: new Date(),
+                  updated_at: new Date()
+                };
+              }
+            });
+            console.log('Initializing with default drawers');
+            set_drawers(initial);
+            // Save initial drawers to database
+            debounced_save(initial);
+          }
+        })
+        .catch(error => {
+          console.error('Failed to fetch drawers:', error);
+        });
+    }, [debounced_save]);
+
     // Update existing setDrawers calls
     useEffect(() => {
-      debouncedSave(drawers);
-    }, [drawers, debouncedSave]);
+      debounced_save(drawers);
+    }, [drawers, debounced_save]);
 
-    const [searchTerm, setSearchTerm] = useState('');
+    const [search_term, set_search_term] = useState('');
 
-    const handleSizeChange = (drawerId: string, newSize: DrawerSize) => {
-      const drawer = drawers[drawerId];
-      const [row, startCol] = [drawerId[0], parseInt(drawerId.slice(1))];
-      const isRightSection = startCol >= 10;
-      const sizeConfig = isRightSection ? SIZES.RIGHT : SIZES.LEFT;
+    const handle_size_change = (drawer_id: string, new_size: DrawerSize) => {
+      const drawer = drawers[drawer_id];
+      const [row, start_col] = [drawer_id[0], parseInt(drawer_id.slice(1))];
+      const is_right_section = start_col >= 10;
+      const size_config = is_right_section ? SIZES.RIGHT : SIZES.LEFT;
       
-      setDrawers(prev => {
+      set_drawers(prev => {
         const newDrawers = { ...prev };
-        if (isRightSection) {
+        if (drawer.is_right_section) {
           if (drawer.size === 'MEDIUM') {
-            if (newSize === 'LARGE' && startCol < 15) {
-              const absorbedId = `${row}${startCol + 1}`;
+            if (new_size === 'LARGE' && start_col < 15) {
+              const absorbedId = `${row}${start_col + 1}`;
               delete newDrawers[absorbedId];
-              newDrawers[drawerId] = {
+              newDrawers[drawer_id] = {
                 ...drawer,
                 size: 'LARGE',
-                positions: [startCol, startCol + 1],
-                title: `${row}${startCol.toString().padStart(2, '0')},${(startCol + 1).toString().padStart(2, '0')}`,
-                spacing: 0
+                positions: JSON.stringify([start_col, start_col + 1]),
+                title: `${row}${start_col.toString().padStart(2, '0')},${(start_col + 1).toString().padStart(2, '0')}`,
+                spacing: 0,
+                updated_at: new Date()
               };
-            } else if (newSize === 'SMALL') {
-              newDrawers[drawerId] = {
+            } else if (new_size === 'SMALL') {
+              newDrawers[drawer_id] = {
                 ...drawer,
                 size: 'SMALL',
-                positions: [startCol],
-                title: `${row}${startCol.toString().padStart(2, '0')}`,
-                spacing: sizeConfig.SMALL.spacing
+                positions: JSON.stringify([start_col]),
+                title: `${row}${start_col.toString().padStart(2, '0')}`,
+                spacing: size_config.SMALL.spacing,
+                updated_at: new Date()
               };
             }
           } else if (drawer.size === 'LARGE') {
-            if (newSize === 'MEDIUM') {
+            if (new_size === 'MEDIUM') {
               // Convert LARGE drawer back to two MEDIUM drawers
-              newDrawers[drawerId] = {
+              newDrawers[drawer_id] = {
                 ...drawer,
                 size: 'MEDIUM',
-                positions: [startCol],
-                title: `${row}${startCol.toString().padStart(2, '0')}`,
-                spacing: 0
+                positions: JSON.stringify([start_col]),
+                title: `${row}${start_col.toString().padStart(2, '0')}`,
+                spacing: 0,
+                updated_at: new Date()
               };
               
-              const nextPos = startCol + 1;
+              const nextPos = start_col + 1;
               newDrawers[`${row}${nextPos}`] = {
                 id: `${row}${nextPos}`,
                 size: 'MEDIUM',
                 title: `${row}${nextPos.toString().padStart(2, '0')}`,
-                positions: [nextPos],
-                isRightSection: true,
-                keywords: [],
-                spacing: 0
+                name: null,
+                positions: JSON.stringify([nextPos]),
+                is_right_section: true,
+                keywords: JSON.stringify([]),
+                spacing: 0,
+                created_at: new Date(),
+                updated_at: new Date()
               };
-            } else if (newSize === 'SMALL') {
+            } else if (new_size === 'SMALL') {
               // Convert LARGE back to one SMALL and one MEDIUM drawer
-              newDrawers[drawerId] = {
+              newDrawers[drawer_id] = {
                 ...drawer,
                 size: 'SMALL',
-                positions: [startCol],
-                title: `${row}${startCol.toString().padStart(2, '0')}`,
-                spacing: sizeConfig.SMALL.spacing
+                positions: JSON.stringify([start_col]),
+                title: `${row}${start_col.toString().padStart(2, '0')}`,
+                spacing: size_config.SMALL.spacing,
+                updated_at: new Date()
               };
               
-              const nextPos = startCol + 1;
+              const nextPos = start_col + 1;
               newDrawers[`${row}${nextPos}`] = {
                 id: `${row}${nextPos}`,
                 size: 'MEDIUM',
                 title: `${row}${nextPos.toString().padStart(2, '0')}`,
-                positions: [nextPos],
-                isRightSection: true,
-                keywords: [],
-                spacing: 0
+                name: null,
+                positions: JSON.stringify([nextPos]),
+                is_right_section: true,
+                keywords: JSON.stringify([]),
+                spacing: 0,
+                created_at: new Date(),
+                updated_at: new Date()
               };
             }
           } else if (drawer.size === 'SMALL') {
-            if (newSize === 'MEDIUM') {
-              newDrawers[drawerId] = {
+            if (new_size === 'MEDIUM') {
+              newDrawers[drawer_id] = {
                 ...drawer,
                 size: 'MEDIUM',
-                positions: [startCol],
-                title: `${row}${startCol.toString().padStart(2, '0')}`,
-                spacing: 0
+                positions: JSON.stringify([start_col]),
+                title: `${row}${start_col.toString().padStart(2, '0')}`,
+                spacing: 0,
+                updated_at: new Date()
               };
-            } else if (newSize === 'LARGE' && startCol < 15) {
-              const nextDrawerId = `${row}${startCol + 1}`;
+            } else if (new_size === 'LARGE' && start_col < 15) {
+              const nextDrawerId = `${row}${start_col + 1}`;
               delete newDrawers[nextDrawerId];
-              newDrawers[drawerId] = {
+              newDrawers[drawer_id] = {
                 ...drawer,
                 size: 'LARGE',
-                positions: [startCol, startCol + 1],
-                title: `${row}${startCol.toString().padStart(2, '0')},${(startCol + 1).toString().padStart(2, '0')}`,
-                spacing: 0
+                positions: JSON.stringify([start_col, start_col + 1]),
+                title: `${row}${start_col.toString().padStart(2, '0')},${(start_col + 1).toString().padStart(2, '0')}`,
+                spacing: 0,
+                updated_at: new Date()
               };
             }
           }
         } else {
-          if (drawer.size === 'SMALL' && newSize === 'MEDIUM') {
-            const nextDrawerId = `${row}${startCol + 1}`;
+          if (drawer.size === 'SMALL' && new_size === 'MEDIUM') {
+            const nextDrawerId = `${row}${start_col + 1}`;
             const nextDrawer = newDrawers[nextDrawerId];
             delete newDrawers[nextDrawerId];
             
-            newDrawers[drawerId] = {
+            newDrawers[drawer_id] = {
               ...drawer,
               size: 'MEDIUM',
-              positions: [startCol, startCol + 1],
-              title: `${row}${startCol.toString().padStart(2, '0')},${(startCol + 1).toString().padStart(2, '0')}`,
-              spacing: sizeConfig.MEDIUM.spacing
+              positions: JSON.stringify([start_col, start_col + 1]),
+              title: `${row}${start_col.toString().padStart(2, '0')},${(start_col + 1).toString().padStart(2, '0')}`,
+              spacing: size_config.MEDIUM.spacing,
+              updated_at: new Date()
             };
-          } else if (drawer.size === 'MEDIUM' && newSize === 'SMALL') {
-            const nextCol = startCol + 1;
-            newDrawers[drawerId] = {
+          } else if (drawer.size === 'MEDIUM' && new_size === 'SMALL') {
+            const nextCol = start_col + 1;
+            newDrawers[drawer_id] = {
               ...drawer,
               size: 'SMALL',
-              positions: [startCol],
-              title: `${row}${startCol.toString().padStart(2, '0')}`,
-              spacing: 0
+              positions: JSON.stringify([start_col]),
+              title: `${row}${start_col.toString().padStart(2, '0')}`,
+              spacing: 0,
+              updated_at: new Date()
             };
             
             newDrawers[`${row}${nextCol}`] = {
               id: `${row}${nextCol}`,
               size: 'SMALL',
               title: `${row}${nextCol.toString().padStart(2, '0')}`,
-              positions: [nextCol],
-              isRightSection: false,
-              keywords: [],
-              spacing: 0
+              name: null,
+              positions: JSON.stringify([nextCol]),
+              is_right_section: false,
+              keywords: JSON.stringify([]),
+              spacing: 0,
+              created_at: new Date(),
+              updated_at: new Date()
             };
-          } else if (newSize === 'LARGE') {
-            if (startCol + 2 <= 9) {
-              const newPositions = [startCol, startCol + 1, startCol + 2];
+          } else if (new_size === 'LARGE') {
+            if (start_col + 2 <= 9) {
+              const newPositions = [start_col, start_col + 1, start_col + 2];
               newPositions.slice(1).forEach(pos => {
                 delete newDrawers[`${row}${pos}`];
               });
               
-              newDrawers[drawerId] = {
+              newDrawers[drawer_id] = {
                 ...drawer,
                 size: 'LARGE',
-                positions: newPositions,
+                positions: JSON.stringify(newPositions),
                 title: `${row}${newPositions.map(p => p.toString().padStart(2, '0')).join(',')}`,
-                spacing: 0
+                spacing: 0,
+                updated_at: new Date()
               };
             }
           } else if (drawer.size === 'LARGE') {
-            newDrawers[drawerId] = {
+            newDrawers[drawer_id] = {
               ...drawer,
-              size: newSize,
-              positions: [startCol],
-              title: `${row}${startCol.toString().padStart(2, '0')}`,
-              spacing: sizeConfig[newSize].spacing
+              size: new_size,
+              positions: JSON.stringify([start_col]),
+              title: `${row}${start_col.toString().padStart(2, '0')}`,
+              spacing: size_config[new_size].spacing,
+              updated_at: new Date()
             };
             
-            if (newSize === 'MEDIUM') {
+            if (new_size === 'MEDIUM') {
               // Create one small drawer for the remaining space
               [1, 2].forEach((offset) => {
-                const pos = startCol + offset;
+                const pos = start_col + offset;
                 if (offset === 1) {
                   // First position becomes part of the MEDIUM drawer
-                  newDrawers[drawerId].positions.push(pos);
-                  newDrawers[drawerId].title = `${row}${startCol.toString().padStart(2, '0')},${pos.toString().padStart(2, '0')}`;
+                  const currentPositions = JSON.parse(newDrawers[drawer_id].positions);
+                  newDrawers[drawer_id].positions = JSON.stringify([...currentPositions, pos]);
+                  newDrawers[drawer_id].title = `${row}${start_col.toString().padStart(2, '0')},${pos.toString().padStart(2, '0')}`;
                 } else {
                   // Second position becomes a new SMALL drawer
                   newDrawers[`${row}${pos}`] = {
                     id: `${row}${pos}`,
                     size: 'SMALL',
                     title: `${row}${pos.toString().padStart(2, '0')}`,
-                    positions: [pos],
-                    isRightSection: false,
-                    keywords: [],
-                    spacing: 0
+                    name: null,
+                    positions: JSON.stringify([pos]),
+                    is_right_section: false,
+                    keywords: JSON.stringify([]),
+                    spacing: 0,
+                    created_at: new Date(),
+                    updated_at: new Date()
                   };
                 }
               });
-            } else if (newSize === 'SMALL') {
+            } else if (new_size === 'SMALL') {
               // Create two small drawers for the remaining space
               [1, 2].forEach((offset) => {
-                const pos = startCol + offset;
+                const pos = start_col + offset;
                 newDrawers[`${row}${pos}`] = {
                   id: `${row}${pos}`,
                   size: 'SMALL',
                   title: `${row}${pos.toString().padStart(2, '0')}`,
-                  positions: [pos],
-                  isRightSection: false,
-                  keywords: [],
-                  spacing: 0
+                  name: null,
+                  positions: JSON.stringify([pos]),
+                  is_right_section: false,
+                  keywords: JSON.stringify([]),
+                  spacing: 0,
+                  created_at: new Date(),
+                  updated_at: new Date()
                 };
               });
             }
-          } else if (drawer.size === 'SMALL' && newSize === ('LARGE' as DrawerSize) && startCol < 15) {
-            const nextDrawerId = `${row}${startCol + 1}`;
+          } else if (drawer.size === 'SMALL' && new_size === ('LARGE' as DrawerSize) && start_col < 15) {
+            const nextDrawerId = `${row}${start_col + 1}`;
             delete newDrawers[nextDrawerId];
-            newDrawers[drawerId] = {
+            newDrawers[drawer_id] = {
               ...drawer,
-              size: newSize,
-              positions: [startCol, startCol + 1],
-              title: `${row}${startCol.toString().padStart(2, '0')},${(startCol + 1).toString().padStart(2, '0')}`,
+              size: new_size,
+              positions: JSON.stringify([start_col, start_col + 1]),
+              title: `${row}${start_col.toString().padStart(2, '0')},${(start_col + 1).toString().padStart(2, '0')}`,
               spacing: 0,
-              isRightSection: true
+              is_right_section: true,
+              updated_at: new Date()
             };
           }
         }
@@ -507,45 +589,50 @@ export const DrawerGrid = () => {
       });
     };
   
-    const isDrawerVisible = (drawer: Drawer) => {
-      if (!drawer || !searchTerm) return true;
-      const searchLower = searchTerm.toLowerCase().trim();
+    const is_drawer_visible = (drawer: DrawerData) => {
+      if (!drawer || !search_term) return true;
+      const searchLower = search_term.toLowerCase().trim();
+      const keywordArray = typeof drawer.keywords === 'string' ? 
+        JSON.parse(drawer.keywords) : drawer.keywords;
+      
       return (drawer.name?.toLowerCase().includes(searchLower) ||
               drawer.title.toLowerCase().includes(searchLower) ||
-              drawer.keywords.some(keyword => 
+              keywordArray.some((keyword: string) => 
                 keyword.toLowerCase().includes(searchLower)
               ));
     };
 
-    const handleDrawerUpdate = (drawerId: string, updatedDrawer: Drawer) => {
-      setDrawers(prev => ({
+    const handle_drawer_update = (drawer_id: string, updated_drawer: DrawerData) => {
+      set_drawers(prev => ({
         ...prev,
-        [drawerId]: updatedDrawer
+        [drawer_id]: updated_drawer
       }));
     };
 
-    const DrawerModal = ({ drawer, onDrawerUpdate }: { drawer: Drawer; onDrawerUpdate: (drawerId: string, updatedDrawer: Drawer) => void }) => {
-      const [showAdvanced, setShowAdvanced] = useState(false);
+    const DrawerModal = ({ drawer, onDrawerUpdate }: { drawer: DrawerData; onDrawerUpdate: (drawerId: string, updatedDrawer: DrawerData) => void }) => {
+      const [show_advanced, set_show_advanced] = useState(false);
       const [name, setName] = useState(drawer.name || '');
-      const [keywords, setKeywords] = useState(drawer.keywords.join(', '));
-      const [localSize, setLocalSize] = useState<DrawerSize>(drawer.size);
-      const [previewImage, setPreviewImage] = useState<string>();
-      const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-      const sizeConfig = drawer.isRightSection ? SIZES.RIGHT : SIZES.LEFT;
-      const drawerSize = sizeConfig[drawer.size];
-      const currentSpacing = (drawer.isRightSection && drawer.size === 'SMALL') || 
-                            (!drawer.isRightSection && drawer.size === 'MEDIUM') 
-                            ? sizeConfig[drawer.size].spacing 
+      const [keywords, setKeywords] = useState(Array.isArray(drawer.keywords) ? drawer.keywords.join(', ') : drawer.keywords);
+      const [local_size, set_local_size] = useState<DrawerSize>(drawer.size);
+      const [preview_image, set_preview_image] = useState<string>();
+      const [is_preview_open, set_is_preview_open] = useState(false);
+      const size_config = drawer.is_right_section ? SIZES.RIGHT : SIZES.LEFT;
+      const drawer_size = size_config[drawer.size];
+      const current_spacing = (drawer.is_right_section && drawer.size === 'SMALL') || 
+                            (!drawer.is_right_section && drawer.size === 'MEDIUM') 
+                            ? size_config[drawer.size].spacing 
                             : drawer.spacing;
 
-      const handleSave = () => {
+      const handle_save = () => {
+        const keywordArray = keywords.split(',').map(k => k.trim()).filter(k => k !== '');
         const updatedDrawer = {
           ...drawer,
           name,
-          keywords: keywords.split(',').map(k => k.trim()).filter(k => k !== '')
+          keywords: JSON.stringify(keywordArray),
+          updated_at: new Date()
         };
-        if (localSize !== drawer.size) {
-          handleSizeChange(drawer.id, localSize);
+        if (local_size !== drawer.size) {
+          handle_size_change(drawer.id, local_size);
         } else {
           onDrawerUpdate(drawer.id, updatedDrawer);
         }
@@ -555,13 +642,13 @@ export const DrawerGrid = () => {
         <>
           <div style={{ 
             display: 'flex', 
-            width: `${drawerSize.width + currentSpacing}px`,
+            width: `${drawer_size.width + current_spacing}px`,
             position: 'relative'
           }}>
             <Card 
               style={{
-                width: `${drawerSize.width}px`,
-                height: `${drawerSize.height}px`,
+                width: `${drawer_size.width}px`,
+                height: `${drawer_size.height}px`,
                 marginRight: `${DRAWER_GAP}px`,
                 display: 'flex',
                 flexDirection: 'column',
@@ -574,7 +661,7 @@ export const DrawerGrid = () => {
                 hover:bg-gray-700 
                 transition-colors 
                 duration-200
-                ${isDrawerVisible(drawer) ? 'opacity-100' : 'opacity-30'}
+                ${is_drawer_visible(drawer) ? 'opacity-100' : 'opacity-30'}
               `}
             >
               <div className="absolute inset-0">
@@ -582,8 +669,8 @@ export const DrawerGrid = () => {
                   <div className="w-full h-full flex items-center justify-center p-2">
                     <AutoResizingText 
                       text={drawer.name} 
-                      width={drawerSize.width - 16} 
-                      height={drawerSize.height - 16}
+                      width={drawer_size.width - 16} 
+                      height={drawer_size.height - 16}
                     />
                   </div>
                 ) : (
@@ -623,60 +710,53 @@ export const DrawerGrid = () => {
                     </div>
 
                     <div className={`border rounded-lg transition-all duration-200 ${
-                      showAdvanced ? '' : 'border'
+                      show_advanced ? '' : 'border'
                     }`}>
                       <Button
-                        variant={showAdvanced ? "ghost" : "outline"}
-                        onClick={() => setShowAdvanced(!showAdvanced)}
+                        variant={show_advanced ? "ghost" : "outline"}
+                        onClick={() => set_show_advanced(!show_advanced)}
                         className={`w-full justify-between ${
-                          showAdvanced ? 'rounded-t-lg border-b' : 'rounded-lg'
+                          show_advanced ? 'rounded-t-lg border-b' : 'rounded-lg'
                         }`}
                       >
                         <span>Advanced Settings</span>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`h-4 w-4 transition-transform ${show_advanced ? 'rotate-180' : ''}`} />
                       </Button>
                       
                       <div className={`space-y-4 px-4 transition-all duration-200 ${
-                        showAdvanced ? 'py-4 h-auto opacity-100' : 'h-0 opacity-0 overflow-hidden'
+                        show_advanced ? 'py-4 h-auto opacity-100' : 'h-0 opacity-0 overflow-hidden'
                       }`}>
                         <label className="text-sm font-medium">Size</label>
                         <div className="flex gap-2">
-                          {Object.keys(sizeConfig).map((size) => (
-                            <Button
-                              key={size}
-                              variant={localSize === size ? "default" : "outline"}
-                              onClick={() => setLocalSize(size as DrawerSize)}
-                              disabled={
-                                drawer.isRightSection ?
-                                  (size === 'LARGE' && drawer.positions[0] >= 15) :
-                                  (size !== 'SMALL' && 
-                                   drawer.positions[0] + SIZES.LEFT[size as keyof typeof SIZES.LEFT].span - 1 > 9)
-                              }
-                            >
-                              {sizeConfig[size as keyof typeof sizeConfig].label}
-                            </Button>
-                          ))}
+                          {Object.keys(size_config).map((size) => {
+                            const positions = JSON.parse(drawer.positions);
+                            const disabled = drawer.is_right_section ?
+                              (size === 'LARGE' && positions[0] >= 15) :
+                              (size !== 'SMALL' && 
+                               positions[0] + SIZES.LEFT[size as keyof typeof SIZES.LEFT].span - 1 > 9);
+                            return (
+                              <Button
+                                key={size}
+                                variant={local_size === size ? "default" : "outline"}
+                                onClick={() => set_local_size(size as DrawerSize)}
+                                disabled={disabled}
+                              >
+                                {size_config[size as keyof typeof size_config].label}
+                              </Button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
                     
                     <div className="flex gap-2 w-full">
-                      <Button onClick={handleSave} className="flex-1">
+                      <Button onClick={handle_save} className="flex-1">
                         Save Changes
                       </Button>
                       <Button
                         variant="outline"
                         disabled={!name}
                         onClick={async () => {
-                          const cupsServer = localStorage.getItem("cupsServer")
-                          const queueName = localStorage.getItem("queueName")
-                          const virtualPrinting = localStorage.getItem("virtualPrinting") === "true"
-                          
-                          if (!cupsServer || !queueName) {
-                            toast.error("Please configure CUPS server and queue name in settings");
-                            return;
-                          }
-
                           try {
                             const response = await fetch('/api/print', {
                               method: 'POST',
@@ -684,10 +764,7 @@ export const DrawerGrid = () => {
                                 'Content-Type': 'application/json',
                               },
                               body: JSON.stringify({
-                                text: name || drawer.title,
-                                server: cupsServer,
-                                queue: queueName,
-                                preview: virtualPrinting
+                                text: name || drawer.title
                               }),
                             });
 
@@ -697,14 +774,14 @@ export const DrawerGrid = () => {
                               throw new Error(result.error || 'Operation failed');
                             }
 
-                            if (virtualPrinting) {
-                              setPreviewImage(result.imageData);
-                              setIsPreviewOpen(true);
+                            if (result.imageData) {
+                              set_preview_image(result.imageData);
+                              set_is_preview_open(true);
                             } else {
                               toast.success('Label printed successfully');
                             }
                           } catch (error) {
-                            toast.error('Operation failed. Please check your configuration.');
+                            toast.error('Operation failed. Please check your printer configuration.');
                           }
                         }}
                       >
@@ -718,18 +795,17 @@ export const DrawerGrid = () => {
             {drawer.spacing > 0 && (
               <div style={{ 
                 width: `${drawer.spacing}px`,
-                height: `${drawerSize.height}px`,
+                height: `${drawer_size.height}px`,
                 backgroundColor: 'transparent'
               }} />
             )}
           </div>
           
           <LabelPreviewModal
-            isOpen={isPreviewOpen}
-            onClose={() => setIsPreviewOpen(false)}
-            imageData={previewImage}
-            onPrint={async () => {
-              // Actual print when preview modal is confirmed
+            is_open={is_preview_open}
+            on_close={() => set_is_preview_open(false)}
+            image_data={preview_image}
+            on_print={async () => {
               try {
                 const response = await fetch('/api/print', {
                   method: 'POST',
@@ -737,10 +813,7 @@ export const DrawerGrid = () => {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    text: name || drawer.title,
-                    server: localStorage.getItem("cupsServer"),
-                    queue: localStorage.getItem("queueName"),
-                    preview: false
+                    text: name || drawer.title
                   }),
                 });
 
@@ -750,9 +823,9 @@ export const DrawerGrid = () => {
                 }
                 
                 toast.success('Label printed successfully');
-                setIsPreviewOpen(false);
+                set_is_preview_open(false);
               } catch (error) {
-                toast.error('Print failed. Please check your CUPS configuration.');
+                toast.error('Print failed. Please check your printer configuration.');
               }
             }}
           />
@@ -760,16 +833,16 @@ export const DrawerGrid = () => {
       );
     };
     
-      const renderDrawerSection = (startCol: number, endCol: number) => {
-        const colWidth = startCol >= 10 ? baseSize.mediumBaseWidth : baseSize.width;
+      const renderDrawerSection = (start_col: number, end_col: number) => {
+        const colWidth = start_col >= 10 ? base_size.medium_base_width : base_size.width;
         return (
           <div>
             <div className="flex mb-2">
               <div className="w-6 mr-1" />  {/* Reduced from mr-2 to mr-1 */}
               <div className="flex">
-                {COL_LABELS.slice(startCol - 1, endCol).map((col, index) => {
+                {COL_LABELS.slice(start_col - 1, end_col).map((col, index) => {
                   const colNumber = parseInt(col);
-                  const cumulativeSpacing = startCol >= 10 
+                  const cumulativeSpacing = start_col >= 10 
                     ? index * DRAWER_GAP 
                     : index * DRAWER_GAP;
                   
@@ -792,10 +865,17 @@ export const DrawerGrid = () => {
             </div>
             {ROW_LABELS.map(row => {
               const rowDrawers = Object.values(drawers)
-                .filter(d => d.id[0] === row && 
-                            d.positions[0] >= startCol && 
-                            d.positions[0] <= endCol)
-                .sort((a, b) => a.positions[0] - b.positions[0]);
+                .filter(d => {
+                  const positions = JSON.parse(d.positions);
+                  return d.id[0] === row && 
+                         positions[0] >= start_col && 
+                         positions[0] <= end_col;
+                })
+                .sort((a, b) => {
+                  const posA = JSON.parse(a.positions)[0];
+                  const posB = JSON.parse(b.positions)[0];
+                  return posA - posB;
+                });
     
               return (
                 <div 
@@ -811,7 +891,7 @@ export const DrawerGrid = () => {
                       <DrawerModal
                         key={drawer.id}
                         drawer={drawer}
-                        onDrawerUpdate={handleDrawerUpdate}
+                        onDrawerUpdate={handle_drawer_update}
                       />
                     ))}
                   </div>
@@ -822,7 +902,7 @@ export const DrawerGrid = () => {
         );
       };
     
-      if (!baseSize.width || !baseSize.mediumBaseWidth) return null;
+      if (!base_size.width || !base_size.medium_base_width) return null;
     
       return (
         <div className="h-screen p-6">
@@ -832,8 +912,8 @@ export const DrawerGrid = () => {
               <Input
                 type="text"
                 placeholder="Search drawers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={search_term}
+                onChange={(e) => set_search_term(e.target.value)}
               />
             </div>
           </div>

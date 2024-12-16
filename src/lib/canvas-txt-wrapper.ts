@@ -5,69 +5,64 @@ interface TextOptions {
   y: number;
   width: number;
   height: number;
-  fontSize: number;
+  font_size: number;
   font: string;
   align: 'left' | 'center' | 'right';
-  vAlign: 'top' | 'middle' | 'bottom';
-  lineHeight: number;
+  v_align: 'top' | 'middle' | 'bottom';
+  line_height: number;
 }
 
-function measureLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+function measure_lines(ctx: CanvasRenderingContext2D, text: string, max_width: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
-  let currentLine = words[0];
+  let current_line = words[0];
 
   for (let i = 1; i < words.length; i++) {
     const word = words[i];
-    const width = ctx.measureText(currentLine + ' ' + word).width;
-    if (width < maxWidth) {
-      currentLine += ' ' + word;
+    const width = ctx.measureText(current_line + ' ' + word).width;
+    if (width < max_width) {
+      current_line += ' ' + word;
     } else {
-      lines.push(currentLine);
-      currentLine = word;
+      lines.push(current_line);
+      current_line = word;
     }
   }
-  lines.push(currentLine);
+  lines.push(current_line);
   return lines;
 }
 
-export async function drawText(
+export async function draw_text(
   ctx: CanvasRenderingContext2D,
   text: string,
   options: TextOptions
 ): Promise<void> {
   // Set font
-  ctx.font = `${options.fontSize}px ${options.font}`;
+  ctx.font = `${options.font_size}px ${options.font}`;
   
   // Measure and split text into lines
-  const lines = measureLines(ctx, text, options.width);
+  const lines = measure_lines(ctx, text, options.width);
+  const line_height = options.line_height || options.font_size * 1.2;
+  const total_height = lines.length * line_height;
   
-  // Calculate total height
-  const totalHeight = lines.length * options.fontSize * options.lineHeight;
-  
-  // Calculate starting Y position based on vertical alignment
-  let startY = options.y;
-  if (options.vAlign === 'middle') {
-    startY = options.y + (options.height - totalHeight) / 2;
-  } else if (options.vAlign === 'bottom') {
-    startY = options.y + options.height - totalHeight;
-  }
-  
-  // Set text alignment
-  ctx.textAlign = options.align;
-  ctx.textBaseline = 'middle';
-  
-  // Calculate x position based on alignment
-  let x = options.x;
-  if (options.align === 'center') {
-    x = options.x + options.width / 2;
-  } else if (options.align === 'right') {
-    x = options.x + options.width;
+  // Calculate vertical position
+  let y = options.y;
+  if (options.v_align === 'middle') {
+    y = options.y + (options.height - total_height) / 2;
+  } else if (options.v_align === 'bottom') {
+    y = options.y + options.height - total_height;
   }
   
   // Draw each line
-  for (let i = 0; i < lines.length; i++) {
-    const y = startY + (i + 0.5) * options.fontSize * options.lineHeight;
-    ctx.fillText(lines[i], x, y);
-  }
+  lines.forEach((line, i) => {
+    let x = options.x;
+    const line_width = ctx.measureText(line).width;
+    
+    if (options.align === 'center') {
+      x = options.x + (options.width - line_width) / 2;
+    } else if (options.align === 'right') {
+      x = options.x + options.width - line_width;
+    }
+    
+    ctx.fillText(line, x, y + i * line_height);
+  });
 } 

@@ -14,76 +14,108 @@ import { ThemeToggle } from "./theme-toggle"
 import { Input } from "@/components/ui/input"
 import { useState, useEffect, useRef } from "react"
 import { Switch } from "@/components/ui/switch"
+import { toast } from "sonner"
 
-export function Settings() {
-  const [settings, setSettings] = useState({
-    cupsServer: "",
-    queueName: "",
-    virtualPrinting: false
-  });
-  const closeRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    const savedCupsServer = localStorage.getItem("cupsServer") || ""
-    const savedQueueName = localStorage.getItem("queueName") || ""
-    const savedVirtualPrinting = localStorage.getItem("virtualPrinting") === "true"
-    setSettings({
-      cupsServer: savedCupsServer,
-      queueName: savedQueueName,
-      virtualPrinting: savedVirtualPrinting
-    })
-  }, [])
-
-  const handleSave = () => {
-    localStorage.setItem("cupsServer", settings.cupsServer)
-    localStorage.setItem("queueName", settings.queueName)
-    localStorage.setItem("virtualPrinting", settings.virtualPrinting.toString())
-    closeRef.current?.click()
-  }
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <SettingsIcon className="h-5 w-5" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between space-x-4">
-            <span className="text-sm font-medium">Theme</span>
-            <ThemeToggle />
-          </div>
-          <div className="space-y-2">
-            <span className="text-sm font-medium">CUPS Server IP</span>
-            <Input
-              value={settings.cupsServer}
-              onChange={(e) => setSettings({ ...settings, cupsServer: e.target.value })}
-              placeholder="e.g., 192.168.1.100:631"
-            />
-          </div>
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Printer Queue Name</span>
-            <Input
-              value={settings.queueName}
-              onChange={(e) => setSettings({ ...settings, queueName: e.target.value })}
-              placeholder="e.g., DYMO_LabelWriter_450_Turbo"
-            />
-          </div>
-          <div className="flex items-center justify-between space-x-4">
-            <span className="text-sm font-medium">Print Preview</span>
-            <Switch
-              checked={settings.virtualPrinting}
-              onCheckedChange={(checked) => setSettings({ ...settings, virtualPrinting: checked })}
-            />
-          </div>
-          <Button onClick={handleSave} className="w-full">Save Settings</Button>
-        </div>
-      </DialogContent>
-      <DialogClose ref={closeRef} />
-    </Dialog>
-  )
+interface Settings {
+    printer_name: string;
+    host: string;
+    port: number;
+    virtual_printing: boolean;
 }
+
+const defaultSettings: Settings = {
+    printer_name: "",
+    host: "localhost",
+    port: 631,
+    virtual_printing: false
+};
+
+function SettingsDialog() {
+    const [settings, set_settings] = useState<Settings>(defaultSettings);
+    const [is_open, set_is_open] = useState(false);
+
+    useEffect(() => {
+        fetch('/api/printer')
+            .then(res => res.json())
+            .then(data => {
+                set_settings({
+                    printer_name: data.printer_name || "",
+                    host: data.host || "localhost",
+                    port: data.port || 631,
+                    virtual_printing: Boolean(data.virtual_printing)
+                });
+            })
+            .catch(console.error);
+    }, []);
+
+    const handle_submit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await fetch('/api/printer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    printer_name: settings.printer_name.trim(),
+                    host: settings.host.trim(),
+                    port: settings.port,
+                    virtual_printing: settings.virtual_printing
+                })
+            });
+            toast.success('Settings saved successfully');
+            set_is_open(false);
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            toast.error('Failed to save settings');
+        }
+    };
+
+    return (
+        <Dialog open={is_open} onOpenChange={set_is_open}>
+            <DialogTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <SettingsIcon className="h-5 w-5" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent onInteractOutside={(e) => e.preventDefault()}>
+                <DialogHeader>
+                    <DialogTitle>Settings</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between space-x-4">
+                        <span className="text-sm font-medium">Theme</span>
+                        <ThemeToggle />
+                    </div>
+                    <div className="space-y-2">
+                        <span className="text-sm font-medium">CUPS Server Host</span>
+                        <Input
+                            placeholder="Printer name"
+                            value={settings.printer_name}
+                            onChange={(e) => set_settings({ ...settings, printer_name: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <span className="text-sm font-medium">Printer Queue Name</span>
+                        <Input
+                            placeholder="e.g., localhost or 192.168.1.100"
+                            value={settings.host}
+                            onChange={(e) => set_settings({ ...settings, host: e.target.value })}
+                        />
+                    </div>
+                    <div className="flex items-center justify-between space-x-4">
+                        <span className="text-sm font-medium">Print Preview</span>
+                        <Switch
+                            checked={settings.virtual_printing}
+                            onCheckedChange={(checked) => set_settings({ ...settings, virtual_printing: checked })}
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={handle_submit} className="flex-1">Save Settings</Button>
+                        <Button variant="outline" onClick={() => set_is_open(false)} className="flex-1">Cancel</Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+export { SettingsDialog as Settings }

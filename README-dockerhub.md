@@ -1,6 +1,16 @@
 # Drawerganizer
 
-A Next.js application for organizing and managing drawer contents with label printing capabilities.
+A Next.js application for organizing and managing drawer contents with integrated label printing capabilities. Designed for my extremely specific use case of a ULINE H-4920 next to a ULINE H-4921 but can be modified for anything you need it for. Printing is designed to use a Dymo LabelWriter connected to a CUPS server. 
+
+## Features
+
+- Interactive grid-based drawer management
+- Label printing support
+- Search functionality for drawer contents
+- Flexible drawer sizing (Small, Medium, Large)
+- Keyword tagging system
+- Dark mode support
+- Mobile-responsive design
 
 ## Quick Start
 
@@ -10,34 +20,70 @@ Pull and run the image:
 docker run -d \
   -p 3000:3000 \
   -v /path/to/your/data:/app/data \
-  -e DATABASE_URL="file:/app/data/database.db" \
+  --name drawerganizer \
   jakegirard/drawerganizer:latest
 ```
 
-Replace `/path/to/your/data` with the path where you want to store your database and application data.
+Access the application at `http://localhost:3000`
 
 ## Configuration
 
 ### Environment Variables
 
 - `DATABASE_URL`: SQLite database connection string (default: `file:/app/data/database.db`)
-- `PORT`: Port to run the application on (default: 3000)
+- `PORT`: Port to run the application on (default: `3000`)
 
 ### Volumes
 
-- `/app/data`: Directory where the SQLite database and application data are stored
+- `/app/data`: Directory where the SQLite database is stored
+  - Ensure this directory has write permissions
+  - Regular backups recommended
 
 ### Ports
 
 - `3000`: Web interface
 
-## Data Persistence
+## Printer Setup
 
-The application uses SQLite for data storage. Make sure to:
-1. Mount a volume for the data directory
-2. Ensure the mounted directory has write permissions
-3. Back up the data directory regularly
+The application supports label printing. To use this feature:
 
-## Source Code
+1. Configure your label printer
+2. Access printer settings through the application interface
+3. Test print functionality using the preview feature
 
-Visit [GitHub Repository](https://github.com/jakergirard/Drawerganizer) for more information and development instructions. 
+## Data Management
+
+- Uses SQLite for data storage
+- Automatic database initialization on first run
+- Data persists across container restarts when using a mounted volume
+- Regular backups recommended for data safety
+
+## Docker Compose Example
+
+```yaml
+version: '3'
+services:
+  drawerganizer:
+    image: jakegirard/drawerganizer:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=file:/app/data/database.db
+    restart: unless-stopped
+```
+
+## Security Considerations
+
+- The application is designed for local network use
+- Consider using a reverse proxy for internet exposure
+- Implement appropriate network security measures
+
+## Support
+
+For issues, feature requests, or contributions, please visit the [GitHub repository](https://github.com/jakegirard/drawerganizer).
+
+## License
+
+MIT License 

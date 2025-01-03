@@ -18,7 +18,8 @@ A Next.js application for organizing and managing drawer contents with integrate
 
 ## Prerequisites
 
-- Node.js 20.x or Docker
+- Node.js 20.x
+- Docker
 - CUPS server with Dymo LabelWriter configured
 - Git (for development)
 

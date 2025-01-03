@@ -25,7 +25,7 @@ const MARGIN_PIXELS = Math.floor(MARGIN_MM * MM_TO_INCHES * DPI);
 
 export async function POST(request: Request) {
   try {
-    const { text } = await request.json();
+    const { text, force_print } = await request.json();
     const printerConfig = await getPrinterConfig();
 
     if (!printerConfig) {
@@ -35,42 +35,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (printerConfig.virtual_printing) {
-      // Create a canvas for preview
-      const canvas = createCanvas(LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS);
-      const ctx = canvas.getContext('2d');
-
-      // Set white background
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS);
-
-      // Set text properties
-      ctx.fillStyle = 'black';
-      await draw_text(ctx, text, {
-        x: MARGIN_PIXELS,
-        y: MARGIN_PIXELS,
-        width: LABEL_WIDTH_PIXELS - (2 * MARGIN_PIXELS),
-        height: LABEL_HEIGHT_PIXELS - (2 * MARGIN_PIXELS),
-        font_size: 48,
-        font: 'Arial',
-        align: 'center',
-        v_align: 'middle',
-        line_height: 1.2
-      });
-
-      // Convert canvas to base64 for preview
-      const imageData = canvas.toDataURL();
-      return NextResponse.json({ imageData });
-    }
-
-    if (!printerConfig.printer_name) {
-      return NextResponse.json(
-        { error: 'Printer not configured' },
-        { status: 400 }
-      );
-    }
-
-    // Create a canvas for printing
+    // Create a canvas for either preview or printing
     const canvas = createCanvas(LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS);
     const ctx = canvas.getContext('2d');
 
@@ -92,24 +57,33 @@ export async function POST(request: Request) {
       line_height: 1.2
     });
 
-    // Convert canvas to PNG buffer
-    const buffer = canvas.toBuffer('image/png');
+    // If in preview mode and not forcing print
+    if (printerConfig.virtual_printing && !force_print) {
+      const imageData = canvas.toDataURL();
+      return NextResponse.json({ imageData });
+    }
 
-    // Create IPP message
-    const printer = new ipp.Printer(`ipp://${printerConfig.host}:${printerConfig.port}/printers/${printerConfig.printer_name}`);
-    const msg = {
-      "operation-attributes-tag": {
-        "requesting-user-name": "User",
-        "job-name": "Label Print",
-        "document-format": "image/png",
-        "printer-uri": `ipp://${printerConfig.host}:${printerConfig.port}/printers/${printerConfig.printer_name}`
-      },
-      data: buffer
-    };
+    if (!printerConfig.printer_name) {
+      return NextResponse.json(
+        { error: 'Printer not configured' },
+        { status: 400 }
+      );
+    }
+
+    // Convert canvas to PNG buffer for printing
+    const buffer = canvas.toBuffer('image/png');
 
     // Send print job
     const response = await new Promise<IPPResponse>((resolve, reject) => {
-      (printer as any).printJob(msg, function(err: any, res: IPPResponse) {
+      const printer = new ipp.Printer(`ipp://${printerConfig.host}:${printerConfig.port}/printers/${printerConfig.printer_name}`);
+      printer.execute("Print-Job", {
+        "operation-attributes-tag": {
+          "requesting-user-name": "User",
+          "job-name": "Label Print",
+          "document-format": "image/png"
+        },
+        data: buffer
+      }, function(err: any, res: IPPResponse) {
         if (err) {
           reject(err);
         } else {

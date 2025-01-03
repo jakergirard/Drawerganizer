@@ -25,7 +25,7 @@ interface Settings {
 
 const defaultSettings: Settings = {
     printer_name: "",
-    host: "localhost",
+    host: "",
     port: 631,
     virtual_printing: false
 };
@@ -40,7 +40,7 @@ function SettingsDialog() {
             .then(data => {
                 set_settings({
                     printer_name: data.printer_name || "",
-                    host: data.host || "localhost",
+                    host: data.host || "",
                     port: data.port || 631,
                     virtual_printing: Boolean(data.virtual_printing)
                 });
@@ -76,7 +76,7 @@ function SettingsDialog() {
                     <SettingsIcon className="h-5 w-5" />
                 </Button>
             </DialogTrigger>
-            <DialogContent onInteractOutside={(e) => e.preventDefault()}>
+            <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Settings</DialogTitle>
                 </DialogHeader>
@@ -86,17 +86,17 @@ function SettingsDialog() {
                         <ThemeToggle />
                     </div>
                     <div className="space-y-2">
-                        <span className="text-sm font-medium">CUPS Server Host</span>
+                        <span className="text-sm font-medium">CUPS Printer Queue Name</span>
                         <Input
-                            placeholder="Printer name"
+                            placeholder="e.g. MyPrinter"
                             value={settings.printer_name}
                             onChange={(e) => set_settings({ ...settings, printer_name: e.target.value })}
                         />
                     </div>
                     <div className="space-y-2">
-                        <span className="text-sm font-medium">Printer Queue Name</span>
+                        <span className="text-sm font-medium">CUPS Server Host IP</span>
                         <Input
-                            placeholder="e.g., localhost or 192.168.1.100"
+                            placeholder="e.g. localhost or 192.168.1.5"
                             value={settings.host}
                             onChange={(e) => set_settings({ ...settings, host: e.target.value })}
                         />
@@ -105,7 +105,7 @@ function SettingsDialog() {
                         <span className="text-sm font-medium">Print Preview</span>
                         <Switch
                             checked={settings.virtual_printing}
-                            onCheckedChange={(checked) => set_settings({ ...settings, virtual_printing: checked })}
+                            onCheckedChange={(checked: boolean) => set_settings({ ...settings, virtual_printing: checked })}
                         />
                     </div>
                     <div className="flex gap-2">

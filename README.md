@@ -2,7 +2,7 @@
 
 A Next.js application for organizing and managing drawer contents with integrated label printing capabilities. Designed for my extremely specific use case of a ULINE H-4920 next to a ULINE H-4921 but can be modified for anything you need it for. Printing is designed to use a Dymo LabelWriter connected to a CUPS server.
 
-![License](https://img.shields.io/github/license/jakergirard/drawerganizer)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/jakegirard/drawerganizer)
 
 ## Features

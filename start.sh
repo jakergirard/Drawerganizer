@@ -13,5 +13,5 @@ if [ ! -f /app/data/database.db ]; then
     chmod 644 /app/data/database.db
 fi
 
-# Start the application
-exec node server.js 
+# Start the application with optimized memory settings
+exec node --initial-heap-size=32MB --max-old-space-size=64 server.js 

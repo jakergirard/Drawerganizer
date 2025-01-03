@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       font: 'Arial',
       align: 'center',
       v_align: 'middle',
-      line_height: 1.2
+      line_height: 1.5
     });
 
     // If in preview mode and not forcing print

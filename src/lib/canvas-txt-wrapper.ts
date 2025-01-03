@@ -38,18 +38,22 @@ export async function draw_text(
 ): Promise<void> {
   // Set font
   ctx.font = `${options.font_size}px ${options.font}`;
+  ctx.textBaseline = 'middle';
   
   // Measure and split text into lines
   const lines = measure_lines(ctx, text, options.width);
-  const line_height = options.line_height || options.font_size * 1.2;
+  const metrics = ctx.measureText('M');
+  const line_height = options.line_height * options.font_size;
   const total_height = lines.length * line_height;
   
   // Calculate vertical position
   let y = options.y;
   if (options.v_align === 'middle') {
-    y = options.y + (options.height - total_height) / 2;
+    y = options.y + (options.height / 2) - (total_height / 2) + (line_height / 2);
   } else if (options.v_align === 'bottom') {
-    y = options.y + options.height - total_height;
+    y = options.y + options.height - total_height + metrics.actualBoundingBoxAscent;
+  } else {
+    y = options.y + metrics.actualBoundingBoxAscent;
   }
   
   // Draw each line

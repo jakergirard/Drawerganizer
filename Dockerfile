@@ -13,7 +13,8 @@ RUN apk add --no-cache \
     jpeg-dev \
     giflib-dev \
     librsvg-dev \
-    sqlite-dev
+    sqlite-dev \
+    vips-dev
 
 # Update npm to latest version
 RUN npm install -g npm@10.9.2
@@ -42,7 +43,10 @@ RUN apk add --no-cache \
     giflib \
     librsvg \
     sqlite \
-    sqlite-dev
+    sqlite-dev \
+    vips \
+    fontconfig \
+    ttf-liberation
 
 # Copy production files
 COPY --from=builder /app/.next/standalone ./
@@ -60,6 +64,11 @@ ENV DATABASE_URL="file:/app/data/database.db"
 # Copy and set up start script
 COPY start.sh ./
 RUN chmod +x start.sh
+
+# Create font directory and copy Arial
+RUN mkdir -p /usr/share/fonts/truetype/
+COPY public/fonts/arial.ttf /usr/share/fonts/truetype/
+RUN fc-cache -f -v
 
 # Expose port
 EXPOSE 3000

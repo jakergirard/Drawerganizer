@@ -14,4 +14,4 @@ if [ ! -f /app/data/database.db ]; then
 fi
 
 # Start the application with optimized memory settings
-exec node --initial-heap-size=32MB --max-old-space-size=64 server.js 
+exec node --max-old-space-size=64 server.js 

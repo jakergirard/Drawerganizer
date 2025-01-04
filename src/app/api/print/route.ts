@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createCanvas, registerFont } from 'canvas';
-import { draw_text } from '@/lib/canvas-txt-wrapper';
+import sharp from 'sharp';
 import { getPrinterConfig } from '@/lib/db';
 import * as ipp from 'ipp';
 import path from 'path';
@@ -10,9 +9,6 @@ interface IPPResponse {
   [key: string]: any;
 }
 
-// Register Arial font
-registerFont(path.join(process.cwd(), 'public/fonts/arial.ttf'), { family: 'Arial' });
-
 // Constants for 25x54mm label at 300 DPI
 const DPI = 300;
 const MM_TO_INCHES = 1 / 25.4;
@@ -20,8 +16,6 @@ const LABEL_WIDTH_MM = 54;
 const LABEL_HEIGHT_MM = 25;
 const LABEL_WIDTH_PIXELS = Math.floor(LABEL_WIDTH_MM * MM_TO_INCHES * DPI);
 const LABEL_HEIGHT_PIXELS = Math.floor(LABEL_HEIGHT_MM * MM_TO_INCHES * DPI);
-const MARGIN_MM = 2;
-const MARGIN_PIXELS = Math.floor(MARGIN_MM * MM_TO_INCHES * DPI);
 
 export async function POST(request: Request) {
   try {
@@ -35,31 +29,43 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create a canvas for either preview or printing
-    const canvas = createCanvas(LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS);
-    const ctx = canvas.getContext('2d');
+    // Create an SVG with centered text
+    const lines = text.split('\n').map((line: string) => 
+      line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    );
+    
+    // Calculate the total block height and initial offset
+    const lineHeight = 52;
+    const totalHeight = (lines.length * lineHeight);
+    const initialOffset = -((totalHeight / 2) - (lineHeight / 1.25));
 
-    // Set white background
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS);
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+      <svg width="${LABEL_WIDTH_PIXELS}" height="${LABEL_HEIGHT_PIXELS}" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="white"/>
+        <text
+          x="50%"
+          y="50%"
+          font-family="Liberation Sans, Arial, sans-serif"
+          font-size="48"
+          text-anchor="middle"
+          dominant-baseline="middle"
+        >
+          ${lines.map((line: string, i: number) => 
+            `<tspan x="50%" dy="${i === 0 ? initialOffset : lineHeight}">${line}</tspan>`
+          ).join('')}
+        </text>
+      </svg>
+    `;
 
-    // Set text properties
-    ctx.fillStyle = 'black';
-    await draw_text(ctx, text, {
-      x: MARGIN_PIXELS,
-      y: MARGIN_PIXELS,
-      width: LABEL_WIDTH_PIXELS - (2 * MARGIN_PIXELS),
-      height: LABEL_HEIGHT_PIXELS - (2 * MARGIN_PIXELS),
-      font_size: 48,
-      font: 'Arial',
-      align: 'center',
-      v_align: 'middle',
-      line_height: 1.5
-    });
+    // Convert SVG to PNG
+    const buffer = await sharp(Buffer.from(svg))
+      .resize(LABEL_WIDTH_PIXELS, LABEL_HEIGHT_PIXELS)
+      .png()
+      .toBuffer();
 
     // If in preview mode and not forcing print
     if (printerConfig.virtual_printing && !force_print) {
-      const imageData = canvas.toDataURL();
+      const imageData = 'data:image/png;base64,' + buffer.toString('base64');
       return NextResponse.json({ imageData });
     }
 
@@ -69,9 +75,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    // Convert canvas to PNG buffer for printing
-    const buffer = canvas.toBuffer('image/png');
 
     // Send print job
     const response = await new Promise<IPPResponse>((resolve, reject) => {

@@ -116,7 +116,7 @@ function getDb(): Database.Database {
         dbInstance.pragma('journal_mode = WAL');
         dbInstance.pragma('synchronous = NORMAL');
         dbInstance.pragma('temp_store = MEMORY');
-        dbInstance.pragma('mmap_size = 64MB'); // Reduced from 30GB to 64MB
+        dbInstance.pragma('mmap_size = 67108864'); // 64MB in bytes
         dbInstance.pragma('page_size = 4096');
         dbInstance.pragma('cache_size = -512'); // Reduced from 2MB to 512KB
         dbInstance.pragma('busy_timeout = 2000'); // Reduced from 5000ms

@@ -775,36 +775,65 @@ export function DrawerGrid() {
         
         set_drawers(prev => {
             const newDrawers = { ...prev };
-            const updated_drawer = {
-                ...drawer,
-                size: new_size,
-                positions: JSON.stringify([start_col]),
-                title: `${row}${start_col.toString().padStart(2, '0')}`,
-                spacing: size_config[new_size].spacing,
-                updated_at: new Date()
-            };
+            const current_positions = JSON.parse(drawer.positions) as number[];
+            let updated_positions = [start_col];
+            let affected_positions: number[] = [];
 
-            // Handle special cases for size changes
+            // Calculate positions based on new size
             if (is_right_section) {
                 if (new_size === 'LARGE' && start_col < 15) {
-                    // Merge with next drawer for LARGE size
-                    const nextId = `${row}${start_col + 1}`;
-                    delete newDrawers[nextId];
-                    updated_drawer.positions = JSON.stringify([start_col, start_col + 1]);
-                    updated_drawer.title = `${row}${start_col.toString().padStart(2, '0')},${(start_col + 1).toString().padStart(2, '0')}`;
-                    updated_drawer.spacing = 0;
+                    updated_positions = [start_col, start_col + 1];
+                    affected_positions = [start_col + 1];
                 }
             } else {
                 if (new_size === 'MEDIUM' && start_col < 9) {
-                    // Merge with next drawer for MEDIUM size
-                    const nextId = `${row}${start_col + 1}`;
-                    delete newDrawers[nextId];
-                    updated_drawer.positions = JSON.stringify([start_col, start_col + 1]);
-                    updated_drawer.title = `${row}${start_col.toString().padStart(2, '0')},${(start_col + 1).toString().padStart(2, '0')}`;
+                    updated_positions = [start_col, start_col + 1];
+                    affected_positions = [start_col + 1];
+                } else if (new_size === 'LARGE' && start_col < 8) {
+                    updated_positions = [start_col, start_col + 1, start_col + 2];
+                    affected_positions = [start_col + 1, start_col + 2];
                 }
             }
 
+            // Update the main drawer
+            const updated_drawer = {
+                ...drawer,
+                size: new_size,
+                positions: JSON.stringify(updated_positions),
+                title: updated_positions.map(pos => `${row}${pos.toString().padStart(2, '0')}`).join(','),
+                spacing: size_config[new_size].spacing,
+                updated_at: new Date()
+            };
             newDrawers[drawer_id] = updated_drawer;
+
+            // Remove affected drawers
+            affected_positions.forEach(pos => {
+                const affected_id = `${row}${pos}`;
+                if (newDrawers[affected_id]) {
+                    delete newDrawers[affected_id];
+                }
+            });
+
+            // When changing back to a smaller size, restore affected drawers
+            if (current_positions.length > updated_positions.length) {
+                const positions_to_restore = current_positions.slice(updated_positions.length);
+                positions_to_restore.forEach(pos => {
+                    const restored_id = `${row}${pos}`;
+                    newDrawers[restored_id] = {
+                        id: restored_id,
+                        size: is_right_section ? 'MEDIUM' : 'SMALL',
+                        title: `${row}${pos.toString().padStart(2, '0')}`,
+                        name: null,
+                        positions: JSON.stringify([pos]),
+                        is_right_section,
+                        keywords: '',
+                        spacing: is_right_section ? SIZES.RIGHT.MEDIUM.spacing : 0,
+                        created_at: new Date(),
+                        updated_at: new Date()
+                    };
+                });
+            }
+
             return newDrawers;
         });
     }, [drawers, SIZES]);

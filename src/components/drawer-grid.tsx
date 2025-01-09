@@ -118,8 +118,8 @@ const AutoResizingText = React.memo(({ text, width, height }: { text: string, wi
       if (!element) return;
       const optimal_size = calculateOptimalFontSize(
         element,
-        width - 4,
-        height - 4,
+        width - 8,
+        height - 8,
         6,
         12,
         hasLineBreaks
@@ -150,8 +150,8 @@ const AutoResizingText = React.memo(({ text, width, height }: { text: string, wi
       ref={text_ref}
       style={{
         fontSize: `${font_size}px`,
-        width: `${width - 4}px`,
-        height: `${height - 4}px`,
+        width: `${width - 8}px`,
+        height: `${height - 8}px`,
         overflow: 'hidden',
         whiteSpace: hasLineBreaks ? 'pre' : 'nowrap',
         wordBreak: 'normal',
@@ -159,7 +159,7 @@ const AutoResizingText = React.memo(({ text, width, height }: { text: string, wi
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '2px',
+        padding: '4px',
         lineHeight: hasLineBreaks ? '1.2' : 'normal',
         maxWidth: '100%'
       }}

@@ -67,15 +67,18 @@ const calculateOptimalFontSize = (
     width: number,
     height: number,
     min_size = 6,
-    max_size = 14
+    max_size = 14,
+    hasLineBreaks: boolean
 ): number => {
     let optimal_size = max_size;
 
     while (min_size <= max_size) {
         const mid = Math.floor((min_size + max_size) / 2);
         element.style.fontSize = `${mid}px`;
+        
+        const contentFits = element.scrollHeight <= height && element.scrollWidth <= width;
 
-        if (element.scrollHeight <= height && element.scrollWidth <= width) {
+        if (contentFits) {
             optimal_size = mid;
             min_size = mid + 1;
         } else {
@@ -104,50 +107,61 @@ const filterDrawers = (drawers: DrawerData[], searchTerm: string): DrawerData[] 
 };
 
 const AutoResizingText = React.memo(({ text, width, height }: { text: string, width: number, height: number }) => {
-  const [font_size, set_font_size] = useState(12);
+  const [font_size, set_font_size] = useState(8);
   const text_ref = useRef<HTMLDivElement>(null);
-    const resize_timeout = useRef<NodeJS.Timeout>();
+  const resize_timeout = useRef<NodeJS.Timeout>();
+  const hasLineBreaks = text.includes('\n');
 
   useEffect(() => {
     const resize_text = () => {
       const element = text_ref.current;
       if (!element) return;
-            const optimal_size = calculateOptimalFontSize(element, width, height);
-            set_font_size(optimal_size);
-        };
+      const optimal_size = calculateOptimalFontSize(
+        element,
+        width - 4,
+        height - 4,
+        6,
+        12,
+        hasLineBreaks
+      );
+      set_font_size(optimal_size);
+    };
 
-        const handle_resize = () => {
-            if (resize_timeout.current) {
-                clearTimeout(resize_timeout.current);
-            }
-            resize_timeout.current = setTimeout(resize_text, 100);
+    const handle_resize = () => {
+      if (resize_timeout.current) {
+        clearTimeout(resize_timeout.current);
+      }
+      resize_timeout.current = setTimeout(resize_text, 100);
     };
 
     resize_text();
-        window.addEventListener('resize', handle_resize);
-        
-        return () => {
-            window.removeEventListener('resize', handle_resize);
-            if (resize_timeout.current) {
-                clearTimeout(resize_timeout.current);
-            }
-        };
-  }, [text, width, height]);
+    window.addEventListener('resize', handle_resize);
+    
+    return () => {
+      window.removeEventListener('resize', handle_resize);
+      if (resize_timeout.current) {
+        clearTimeout(resize_timeout.current);
+      }
+    };
+  }, [text, width, height, hasLineBreaks]);
 
   return (
     <div
       ref={text_ref}
       style={{
         fontSize: `${font_size}px`,
-        width: `${width}px`,
-        height: `${height}px`,
+        width: `${width - 4}px`,
+        height: `${height - 4}px`,
         overflow: 'hidden',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
+        whiteSpace: hasLineBreaks ? 'pre' : 'nowrap',
+        wordBreak: 'normal',
         textAlign: 'center',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        padding: '2px',
+        lineHeight: hasLineBreaks ? '1.2' : 'normal',
+        maxWidth: '100%'
       }}
       className="text-foreground font-medium"
     >
@@ -264,6 +278,24 @@ const DrawerModal = React.memo(({
     const [local_size, set_local_size] = useState<DrawerSize>(drawer.size);
     const [preview_image, set_preview_image] = useState<string>();
     const [is_preview_open, set_is_preview_open] = useState(false);
+    const [name_error, set_name_error] = useState<string | null>(null);
+
+    const validateAndSetName = (value: string) => {
+        const lines = value.split('\n');
+        if (lines.length > 5) {
+            set_name_error('Maximum 5 lines allowed');
+            return;
+        }
+        
+        const hasLongLine = lines.some(line => line.length > 20);
+        if (hasLongLine) {
+            set_name_error('Maximum 20 characters per line');
+            return;
+        }
+
+        set_name_error(null);
+        setName(value);
+    };
 
     const drawer_size = sizeConfig[drawer.size];
     const current_spacing = (drawer.is_right_section && drawer.size === 'SMALL') || 
@@ -332,19 +364,21 @@ const DrawerModal = React.memo(({
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              position: 'relative'
+              position: 'relative',
+              padding: '2px',
+              borderWidth: '1px'
             }}
             className={`cursor-pointer transition-colors duration-200 hover:bg-gray-700 ${
               search_term && !isSearchMatch ? 'opacity-30' : ''
             }`}
           >
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 p-1">
               {drawer.name ? (
-                <div className="w-full h-full flex items-center justify-center p-2">
+                <div className="w-full h-full flex items-center justify-center">
                   <AutoResizingText 
                     text={drawer.name} 
-                    width={drawer_size.width - 16} 
-                    height={drawer_size.height - 16}
+                    width={drawer_size.width - 4}
+                    height={drawer_size.height - 4}
                   />
                 </div>
               ) : (
@@ -366,10 +400,19 @@ const DrawerModal = React.memo(({
                     <label className="text-sm font-medium">Name</label>
                     <textarea
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => validateAndSetName(e.target.value)}
                       placeholder="Enter drawer name"
-                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className={`flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                        name_error ? 'border-red-500' : ''
+                      }`}
                     />
+                    {name_error ? (
+                        <p className="text-xs text-red-500">{name_error}</p>
+                    ) : (
+                        <p className="text-xs text-muted-foreground">
+                            Maximum 5 lines, 20 characters per line. Use line breaks for multi-line text.
+                        </p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">

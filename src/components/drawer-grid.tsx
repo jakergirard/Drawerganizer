@@ -17,6 +17,7 @@ import {
 import { toast } from 'sonner';
 import { LabelPreviewModal } from './label-preview-modal';
 import { logger } from '@/lib/logger';
+import { Textfit } from 'react-textfit';
 
 /* eslint-disable react-hooks/exhaustive-deps */
 
@@ -107,65 +108,37 @@ const filterDrawers = (drawers: DrawerData[], searchTerm: string): DrawerData[] 
 };
 
 const AutoResizingText = React.memo(({ text, width, height }: { text: string, width: number, height: number }) => {
-  const [font_size, set_font_size] = useState(8);
-  const text_ref = useRef<HTMLDivElement>(null);
-  const resize_timeout = useRef<NodeJS.Timeout>();
   const hasLineBreaks = text.includes('\n');
 
-  useEffect(() => {
-    const resize_text = () => {
-      const element = text_ref.current;
-      if (!element) return;
-      const optimal_size = calculateOptimalFontSize(
-        element,
-        width - 8,
-        height - 8,
-        6,
-        12,
-        hasLineBreaks
-      );
-      set_font_size(optimal_size);
-    };
-
-    const handle_resize = () => {
-      if (resize_timeout.current) {
-        clearTimeout(resize_timeout.current);
-      }
-      resize_timeout.current = setTimeout(resize_text, 100);
-    };
-
-    resize_text();
-    window.addEventListener('resize', handle_resize);
-    
-    return () => {
-      window.removeEventListener('resize', handle_resize);
-      if (resize_timeout.current) {
-        clearTimeout(resize_timeout.current);
-      }
-    };
-  }, [text, width, height, hasLineBreaks]);
-
   return (
-    <div
-      ref={text_ref}
-      style={{
-        fontSize: `${font_size}px`,
-        width: `${width - 8}px`,
-        height: `${height - 8}px`,
-        overflow: 'hidden',
-        whiteSpace: hasLineBreaks ? 'pre' : 'nowrap',
-        wordBreak: 'normal',
-        textAlign: 'center',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '4px',
-        lineHeight: hasLineBreaks ? '1.2' : 'normal',
-        maxWidth: '100%'
-      }}
-      className="text-foreground font-medium"
-    >
-      {text}
+    <div style={{
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+      padding: '0.5%'
+    }}>
+      <Textfit
+        mode={hasLineBreaks ? "multi" : "single"}
+        forceSingleModeWidth={!hasLineBreaks}
+        min={1}
+        max={12}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+          fontWeight: 500,
+          letterSpacing: '-0.01em',
+          whiteSpace: 'pre',
+          textAlign: 'center',
+          lineHeight: hasLineBreaks ? '1.2' : 'normal'
+        }}
+        className="text-foreground"
+      >
+        {text}
+      </Textfit>
     </div>
   );
 });
